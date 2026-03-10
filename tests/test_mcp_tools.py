@@ -33,3 +33,4 @@ async def test_fetch_urls_has_llm_instruction_parameter() -> None:
     assert "use_llm" in props, "必须支持 use_llm 参数"
     assert "urls" in props, "必须支持 urls 参数"
     assert "concurrency" in props, "必须支持 concurrency 参数"
+    assert props["use_llm"].get("default") is False

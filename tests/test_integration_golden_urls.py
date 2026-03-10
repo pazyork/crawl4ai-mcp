@@ -6,15 +6,7 @@ import pytest
 
 from crawl4ai_mcp.config import get_settings
 from crawl4ai_mcp.crawler import CrawlService, FetchOptions
-
-GOLDEN_URLS = [
-    "https://zhuanlan.zhihu.com/p/1947787094299746426",
-    "https://www.zhihu.com/people/phppan",
-    "https://mp.weixin.qq.com/s/vdI4M1Ly8XTnJ6PqpQcEaA",
-    "https://code.claude.com/docs/zh-CN/hooks",
-    "https://medium.com/@sampan090611/claude-code-feels-like-a-senior-dev-heres-what-actually-makes-it-different-and-what-the-49c02b456d9c",
-    "https://blog.csdn.net/Dontla/article/details/150590085",
-]
+from crawl4ai_mcp.golden_urls import GOLDEN_URLS
 
 
 @pytest.mark.integration

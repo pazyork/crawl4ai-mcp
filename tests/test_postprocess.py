@@ -14,6 +14,7 @@ from crawl4ai_mcp.crawler import (
 def test_looks_like_interstitial() -> None:
     assert _looks_like_interstitial("当前环境异常\n去验证")
     assert _looks_like_interstitial("Access Denied")
+    assert _looks_like_interstitial("执行安全验证\n验证成功。正在等待 www.producthunt.com 响应")
     assert not _looks_like_interstitial("# Title\n\nHello world")
 
 
