@@ -208,6 +208,37 @@ def _need_stronger_attempt(url: str, content: str) -> bool:
     return False
 
 
+def _looks_like_interstitial(content: str) -> bool:
+    s = content.strip()
+    if not s:
+        return True
+    markers = (
+        "当前环境异常",
+        "完成验证后即可继续访问",
+        "去验证",
+        "请开启 JavaScript",
+        "Access Denied",
+    )
+    return any(m in s for m in markers)
+
+
+def _trim_to_first_h1(md: str) -> str:
+    lines = md.splitlines()
+    for i, line in enumerate(lines):
+        if line.lstrip().startswith("# "):
+            return "\n".join(lines[i:]).lstrip()
+    return md
+
+
+def _ensure_title_h1(md: str, title: Optional[str]) -> str:
+    if not title:
+        return md
+    s = md.lstrip()
+    if s.startswith("# "):
+        return md
+    return f"# {title}\n\n{md.lstrip()}"
+
+
 class CrawlService:
     def __init__(self, settings: Settings):
         self._settings = settings
@@ -224,6 +255,8 @@ class CrawlService:
         }
         if self._settings.user_agent:
             browser_kwargs["user_agent"] = self._settings.user_agent
+        else:
+            browser_kwargs["user_agent_mode"] = "random"
         browser_cfg = BrowserConfig(**browser_kwargs)
         self._crawler = AsyncWebCrawler(config=browser_cfg)
         await self._crawler.__aenter__()
@@ -369,13 +402,19 @@ class CrawlService:
                 t = await _extract_title_via_http(final_url)
             title = t or None
 
+        if content_format == "markdown":
+            host = urlparse(final_url).netloc.lower()
+            if "medium.com" in host:
+                content = _trim_to_first_h1(content)
+            content = _ensure_title_h1(content, title)
+
         if options.max_chars > 0 and len(content) > options.max_chars:
             content = content[: options.max_chars]
 
         raw_links = getattr(res, "links", None)
         links = _normalize_links(raw_links)
 
-        return build_result_dict(
+        result = build_result_dict(
             url=url,
             final_url=final_url,
             title=title,
@@ -383,6 +422,9 @@ class CrawlService:
             content_format=content_format,
             links=links,
         )
+        if _looks_like_interstitial(content):
+            result["blocked"] = True
+        return result
 
 
 async def fetch_many(

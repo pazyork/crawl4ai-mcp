@@ -97,9 +97,12 @@ OpenAI-compatible（可选）：
   "content": "...",
   "content_format": "markdown",
   "extracted_at": "2026-03-10T00:00:00Z",
-  "links": [{"text": "...", "url": "..."}]
+  "links": [{"text": "...", "url": "..."}],
+  "blocked": false
 }
 ```
+
+`blocked=true` 表示疑似命中反爬/验证页（例如“当前环境异常/去验证/Access Denied”）；此时建议配置代理或 cookies 再试。
 
 ### `fetch_urls`
 
