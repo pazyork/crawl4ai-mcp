@@ -18,4 +18,9 @@ GOLDEN_URLS = [
     "https://caihongtu.top/2024/github-profile/",
     "https://openrouter.ai/models?max_price=0.1",
     "https://m.douban.com/movie/",
+    "https://www.me.news/contents/257477",
+    "https://www.darioamodei.com/essay/the-adolescence-of-technology",
+    "https://zhidx.com/p/531380.html",
+    "https://www.bestblogs.dev/en/article/c5287c22",
+    "https://www.rogerslettter.com/expert-radar",
 ]

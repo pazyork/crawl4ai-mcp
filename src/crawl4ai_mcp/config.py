@@ -42,6 +42,11 @@ class Settings(BaseSettings):
     mean_delay_s: float = Field(default=0.12)
     max_delay_jitter_s: float = Field(default=0.25)
 
+    cloudflare_bypass: bool = Field(
+        default=False,
+        description="Enable aggressive Cloudflare bypass mode with longer waits",
+    )
+
 
 def get_settings() -> Settings:
     return Settings()

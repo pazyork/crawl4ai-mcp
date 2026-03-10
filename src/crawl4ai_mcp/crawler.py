@@ -109,6 +109,28 @@ def _domain_overrides(url: str) -> dict[str, Any]:
             "page_timeout": 70_000,
             "css_selector_hard": "#content_views",
         }
+    if "producthunt.com" in host:
+        return {
+            "wait_for_fast": "body",
+            "wait_for_hard": "body",
+            "page_timeout": 60_000,
+            "wait_until": "networkidle",
+            "delay_before_return_html": 5.0,
+            "cloudflare_wait": True,
+        }
+    if "github.com" in host:
+        return {
+            "wait_for_fast": "body",
+            "wait_for_hard": "body",
+            "page_timeout": 50_000,
+        }
+    if "watcha.cn" in host or "douban.com" in host:
+        return {
+            "wait_for_fast": "body",
+            "wait_for_hard": "body",
+            "page_timeout": 50_000,
+            "wait_until": "networkidle",
+        }
     return {}
 
 
@@ -450,7 +472,12 @@ class CrawlService:
 
         browser_kwargs["extra_args"] = [
             "--disable-blink-features=AutomationControlled",
+            "--disable-features=IsolateOrigins,site-per-process",
+            "--disable-site-isolation-trials",
+            "--disable-web-security",
+            "--disable-features=BlockInsecurePrivateNetworkRequests",
         ]
+        browser_kwargs["ignore_https_errors"] = True
         browser_cfg = BrowserConfig(**browser_kwargs)
         self._crawler = AsyncWebCrawler(config=browser_cfg)
         await self._crawler.__aenter__()
@@ -492,6 +519,12 @@ class CrawlService:
         delay_before_return_html = float(
             overrides.get("delay_before_return_html", self._settings.page_wait_ms / 1000.0)
         )
+        cloudflare_wait = bool(overrides.get("cloudflare_wait", False))
+        
+        # Extra delay for Cloudflare-protected sites
+        if cloudflare_wait or self._settings.cloudflare_bypass:
+            delay_before_return_html = max(delay_before_return_html, 5.0)
+            wait_until = "networkidle"
 
         mean_delay = max(0.0, float(self._settings.mean_delay_s))
         max_jitter = max(0.0, float(self._settings.max_delay_jitter_s))

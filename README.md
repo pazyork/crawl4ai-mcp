@@ -144,6 +144,9 @@ The server already includes randomized browser behavior in code:
 | `override_navigator` | Yes |
 | `simulate_user` | Yes, in stronger fallback mode |
 | Proxy / cookies / persistent profile | Supported via env vars |
+| Cloudflare bypass | Enhanced browser fingerprinting + configurable wait strategies |
+
+**Note**: For overseas websites (Medium, ProductHunt, etc.), using a proxy is recommended. The server supports HTTP/HTTPS/SOCKS5 proxies via `CRAWL4AI_MCP_PROXY` environment variable.
 
 ### Proxy input formats
 
