@@ -7,7 +7,7 @@ name = "crawl4ai-mcp"
 version = "0.1.0"
 description = "An MCP server built on crawl4ai for reliable webpage extraction"
 readme = "README.md"
-requires-python = ">=3.9,<3.13"
+requires-python = ">=3.10,<3.13"
 license = { text = "AGPL-3.0-or-later" }
 authors = [{ name = "crawl4ai-mcp contributors" }]
 dependencies = [

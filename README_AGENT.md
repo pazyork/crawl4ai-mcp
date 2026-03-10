@@ -44,7 +44,7 @@ uname -s  # Darwin (macOS), Linux, or check for Windows
 ```
 
 **Only ask user if:**
-- Python < 3.9 or not found → "Please install Python 3.9+"
+- Python < 3.10 or not found → "Please install Python 3.10+"
 - Multiple Python environments detected → "I found both conda and venv. Which do you prefer?"
 
 ### Step 2: Clone and Install
