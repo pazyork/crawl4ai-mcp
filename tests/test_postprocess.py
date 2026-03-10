@@ -1,6 +1,12 @@
 from __future__ import annotations
 
-from crawl4ai_mcp.crawler import _ensure_title_h1, _looks_like_interstitial, _trim_to_first_h1
+from crawl4ai_mcp.crawler import (
+    _ensure_title_h1,
+    _looks_like_interstitial,
+    _remove_data_image_lines,
+    _squeeze_blank_lines,
+    _trim_to_first_h1,
+)
 
 
 def test_looks_like_interstitial() -> None:
@@ -18,3 +24,15 @@ def test_ensure_title_h1() -> None:
     md = "hello"
     assert _ensure_title_h1(md, "T").startswith("# T\n\n")
     assert _ensure_title_h1("# Already\n\nX", "T").startswith("# Already")
+
+
+def test_remove_data_image_lines() -> None:
+    md = "a\n![x](data:image/svg+xml,abc)\n![](data:image/svg+xml,def)\nB"
+    out = _remove_data_image_lines(md)
+    assert "data:image/svg+xml" not in out
+    assert out.splitlines() == ["a", "B"]
+
+
+def test_squeeze_blank_lines() -> None:
+    md = "a\n\n\n\nB\n\n"
+    assert _squeeze_blank_lines(md) == "a\n\nB\n"

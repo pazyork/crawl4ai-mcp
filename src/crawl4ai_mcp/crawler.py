@@ -239,6 +239,32 @@ def _ensure_title_h1(md: str, title: Optional[str]) -> str:
     return f"# {title}\n\n{md.lstrip()}"
 
 
+def _remove_data_image_lines(md: str) -> str:
+    out: list[str] = []
+    for line in md.splitlines():
+        s = line.strip()
+        if "data:image/svg+xml" in s and s.startswith("!"):
+            continue
+        out.append(line)
+    return "\n".join(out)
+
+
+def _squeeze_blank_lines(md: str) -> str:
+    lines = md.splitlines()
+    out: list[str] = []
+    blank = False
+    for line in lines:
+        if line.strip() == "":
+            if blank:
+                continue
+            blank = True
+            out.append("")
+        else:
+            blank = False
+            out.append(line.rstrip())
+    return "\n".join(out).strip() + "\n"
+
+
 class CrawlService:
     def __init__(self, settings: Settings):
         self._settings = settings
@@ -413,6 +439,8 @@ class CrawlService:
             if "medium.com" in host:
                 content = _trim_to_first_h1(content)
             content = _ensure_title_h1(content, title)
+            content = _remove_data_image_lines(content)
+            content = _squeeze_blank_lines(content)
 
         if options.max_chars > 0 and len(content) > options.max_chars:
             content = content[: options.max_chars]
