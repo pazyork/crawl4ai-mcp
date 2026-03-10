@@ -22,7 +22,7 @@ It renders real pages with Playwright + Crawl4AI, returns **main-content-first M
 | Audience | Read this |
 |---|---|
 | Human developer | **[README.zh-CN.md](./README.zh-CN.md)** / **[README.md](./README.md)** |
-| Agent / Claude Code / Cursor / Windsurf | **[README_AGENT.md](./README_AGENT.md)** |
+| Living in the AI era, delegating your remaining sanity to an agent | **[README_AGENT.md](./README_AGENT.md)** |
 
 ## At a glance
 
@@ -43,16 +43,16 @@ It renders real pages with Playwright + Crawl4AI, returns **main-content-first M
 
 ```mermaid
 flowchart LR
-    A[URLs[]] --> B[Playwright + Crawl4AI]
-    B --> C{Fast path enough?}
-    C -- Yes --> D[Markdown / HTML result]
+    A[URL list input] --> B[Playwright and Crawl4AI]
+    B --> C{Fast path enough}
+    C -- Yes --> D[Markdown or HTML result]
     C -- No --> E[Stronger fallback]
     E --> D
     D --> F[Site-specific cleanup]
-    F --> G{use_llm?}
+    F --> G{use_llm enabled}
     G -- No --> H[Return non-LLM result]
     G -- Yes --> I[OpenAI-compatible cleanup]
-    I --> J{LLM success?}
+    I --> J{LLM success}
     J -- Yes --> K[Return enhanced result]
     J -- No --> H
 ```

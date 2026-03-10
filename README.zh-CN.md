@@ -22,7 +22,7 @@
 | 你是谁 | 看哪个文档 |
 |---|---|
 | 人类开发者 | **[README.zh-CN.md](./README.zh-CN.md)** / **[README.md](./README.md)** |
-| Agent / Claude Code / Cursor / Windsurf | **[README_AGENT.md](./README_AGENT.md)** |
+| 活在 AI 时代、准备把剩余理智外包给 Agent 的你 | **[README_AGENT.md](./README_AGENT.md)** |
 
 ## 一眼看懂
 
@@ -43,16 +43,16 @@
 
 ```mermaid
 flowchart LR
-    A[URLs 列表] --> B[Playwright + Crawl4AI]
-    B --> C{快速路径够不够?}
-    C -- 是 --> D[得到 Markdown / HTML]
+    A[URL 列表输入] --> B[Playwright 与 Crawl4AI]
+    B --> C{快速路径够不够}
+    C -- 是 --> D[得到 Markdown 或 HTML]
     C -- 否 --> E[进入强力回退模式]
     E --> D
     D --> F[站点定制清洗]
-    F --> G{use_llm?}
+    F --> G{是否启用 use_llm}
     G -- 否 --> H[返回非 LLM 结果]
     G -- 是 --> I[OpenAI-compatible 二次清洗]
-    I --> J{LLM 成功?}
+    I --> J{LLM 是否成功}
     J -- 是 --> K[返回增强结果]
     J -- 否 --> H
 ```

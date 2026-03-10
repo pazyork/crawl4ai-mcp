@@ -6,7 +6,7 @@
 [![Batch Only](https://img.shields.io/badge/interface-fetch__urls-2563EB)](./README.md)
 [![Optional LLM](https://img.shields.io/badge/LLM-optional-7C3AED)](./README.md)
 
-**For Claude Code / Cursor / Windsurf / Claude Desktop / MCP-capable agents**
+**For the AI era: when you decide sleep is optional and delegation is the real product feature.**
 
 </div>
 
