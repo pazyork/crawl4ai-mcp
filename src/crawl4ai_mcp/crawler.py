@@ -1,0 +1,404 @@
+from __future__ import annotations
+
+import asyncio
+import json
+import re
+from dataclasses import dataclass
+from html import unescape
+from pathlib import Path
+from typing import Any, Optional, Union
+from urllib.parse import urlparse
+
+import httpx
+from crawl4ai import AsyncWebCrawler
+from crawl4ai.async_configs import BrowserConfig, CrawlerRunConfig
+from crawl4ai.cache_context import CacheMode
+
+from .config import Settings
+from .types import build_result_dict
+
+
+@dataclass(frozen=True)
+class FetchOptions:
+    format: str
+    max_chars: int
+
+
+def _load_storage_state(path: Optional[str]) -> Optional[dict[str, Any]]:
+    if not path:
+        return None
+    p = Path(path)
+    if not p.exists():
+        raise FileNotFoundError(f"cookies_json not found: {path}")
+    return json.loads(p.read_text(encoding="utf-8"))
+
+
+def _scroll_js(max_steps: int, step_wait_ms: int) -> str:
+    return f"""
+(() => {{
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+  return (async () => {{
+    let last = 0;
+    for (let i = 0; i < {max_steps}; i++) {{
+      window.scrollTo(0, document.body.scrollHeight);
+      await sleep({step_wait_ms});
+      const h = document.body.scrollHeight;
+      if (h === last) break;
+      last = h;
+    }}
+    window.scrollTo(0, 0);
+  }})();
+}})();
+""".strip()
+
+
+def _domain_overrides(url: str) -> dict[str, Any]:
+    host = urlparse(url).netloc.lower()
+    if "mp.weixin.qq.com" in host:
+        return {
+            "wait_for_fast": "body",
+            "wait_for_hard": "body",
+            "page_timeout": 90_000,
+            "css_selector_hard": "#js_content",
+        }
+    if "zhuanlan.zhihu.com" in host:
+        return {
+            "wait_for_fast": "css:article",
+            "wait_for_hard": "css:article",
+            "page_timeout": 70_000,
+            "css_selector_hard": "article",
+        }
+    if host == "www.zhihu.com":
+        return {
+            "wait_for_fast": "css:main",
+            "wait_for_hard": "css:main",
+            "page_timeout": 80_000,
+            "css_selector_hard": "main",
+        }
+    if "medium.com" in host:
+        return {
+            "wait_for_fast": "css:article",
+            "wait_for_hard": "css:article",
+            "page_timeout": 80_000,
+            "css_selector_hard": "article",
+        }
+    if "code.claude.com" in host:
+        return {
+            "wait_for_fast": "body",
+            "wait_for_hard": "body",
+            "page_timeout": 80_000,
+            "css_selector_hard": "#content-area",
+        }
+    if "csdn.net" in host:
+        return {
+            "wait_for_fast": "css:#content_views",
+            "wait_for_hard": "css:#content_views",
+            "page_timeout": 70_000,
+            "css_selector_hard": "#content_views",
+        }
+    return {}
+
+
+def _normalize_links(raw: Any) -> list[dict[str, str]]:
+    out: list[dict[str, str]] = []
+    if raw is None:
+        return out
+    if isinstance(raw, dict):
+        for _, v in raw.items():
+            if isinstance(v, list):
+                for item in v:
+                    if isinstance(item, dict):
+                        href = item.get("href") or item.get("url")
+                        text = item.get("text") or item.get("title") or ""
+                        if href:
+                            out.append({"text": str(text)[:200], "url": str(href)})
+    elif isinstance(raw, list):
+        for item in raw:
+            if isinstance(item, dict):
+                href = item.get("href") or item.get("url")
+                text = item.get("text") or item.get("title") or ""
+                if href:
+                    out.append({"text": str(text)[:200], "url": str(href)})
+    seen: set[tuple[str, str]] = set()
+    dedup: list[dict[str, str]] = []
+    for link in out:
+        key = (link.get("text", ""), link.get("url", ""))
+        if key in seen:
+            continue
+        seen.add(key)
+        dedup.append(link)
+    return dedup
+
+
+def _pick_str(v: Any) -> str:
+    if v is None:
+        return ""
+    if isinstance(v, str):
+        return v
+    try:
+        return str(v)
+    except Exception:
+        return ""
+
+
+def _pick_markdown(result: Any) -> str:
+    v2 = getattr(result, "markdown_v2", None)
+    if v2 is not None:
+        for attr in ("fit_markdown", "markdown_with_citations", "raw_markdown", "markdown"):
+            s = _pick_str(getattr(v2, attr, None))
+            if s.strip():
+                return s
+
+    md = getattr(result, "markdown", None)
+    if md is not None and not isinstance(md, str):
+        for attr in ("fit_markdown", "raw_markdown", "markdown"):
+            s = _pick_str(getattr(md, attr, None))
+            if s.strip():
+                return s
+    s = _pick_str(md)
+    return s
+
+
+def _pick_html(result: Any) -> str:
+    return _pick_str(getattr(result, "html", None))
+
+
+def _extract_title_from_html(html: str) -> str:
+    m = re.search(r"<title[^>]*>(.*?)</title>", html, flags=re.IGNORECASE | re.DOTALL)
+    if not m:
+        return ""
+    raw = m.group(1)
+    raw = re.sub(r"\s+", " ", raw)
+    t = unescape(raw).strip()
+    return t
+
+
+def _extract_title_from_markdown(md: str) -> str:
+    for line in md.splitlines():
+        s = line.strip()
+        if s.startswith("# "):
+            return s[2:].strip()
+    return ""
+
+
+async def _extract_title_via_http(url: str) -> str:
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+            "AppleWebKit/537.36 Chrome/122.0.0.0 Safari/537.36"
+        ),
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    }
+    try:
+        async with httpx.AsyncClient(follow_redirects=True, timeout=10.0) as client:
+            r = await client.get(url, headers=headers)
+            r.raise_for_status()
+            return _extract_title_from_html(r.text)
+    except Exception:
+        return ""
+
+
+def _need_stronger_attempt(url: str, content: str) -> bool:
+    host = urlparse(url).netloc.lower()
+    if not content.strip():
+        return True
+    hard_hosts = ("zhihu.com", "mp.weixin.qq.com", "medium.com", "csdn.net", "code.claude.com")
+    if any(x in host for x in hard_hosts):
+        return len(content.strip()) < 800
+    return False
+
+
+class CrawlService:
+    def __init__(self, settings: Settings):
+        self._settings = settings
+        self._crawler: Optional[AsyncWebCrawler] = None
+
+    async def __aenter__(self) -> CrawlService:
+        if self._crawler is not None:
+            return self
+        storage_state = _load_storage_state(self._settings.cookies_json)
+        browser_kwargs: dict[str, Any] = {
+            "headless": self._settings.headless,
+            "proxy": self._settings.proxy,
+            "storage_state": storage_state,
+        }
+        if self._settings.user_agent:
+            browser_kwargs["user_agent"] = self._settings.user_agent
+        browser_cfg = BrowserConfig(**browser_kwargs)
+        self._crawler = AsyncWebCrawler(config=browser_cfg)
+        await self._crawler.__aenter__()
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb) -> None:
+        if self._crawler is None:
+            return
+        await self._crawler.__aexit__(exc_type, exc, tb)
+        self._crawler = None
+
+    async def fetch(self, *, url: str, options: FetchOptions) -> dict[str, object]:
+        if self._crawler is None:
+            raise RuntimeError("Crawler not started")
+
+        async def run_with_retries(cfg: CrawlerRunConfig) -> Any:
+            retries = max(0, int(self._settings.max_retries))
+            last = None
+            for i in range(retries + 1):
+                try:
+                    last = await self._crawler.arun(url=url, config=cfg)
+                    if getattr(last, "success", False):
+                        return last
+                except Exception as e:
+                    last = e
+                if i < retries:
+                    await asyncio.sleep(min(1.0 * (2**i), 4.0))
+            if isinstance(last, Exception):
+                raise last
+            return last
+
+        overrides = _domain_overrides(url)
+        wait_for_fast = overrides.get("wait_for_fast", "body")
+        wait_for_hard = overrides.get("wait_for_hard", wait_for_fast)
+        css_selector_hard = overrides.get("css_selector_hard")
+        page_timeout = int(overrides.get("page_timeout", self._settings.navigation_timeout_ms))
+
+        fast_cfg = CrawlerRunConfig(
+            cache_mode=CacheMode.BYPASS,
+            stream=False,
+            wait_for=wait_for_fast,
+            page_timeout=page_timeout,
+            magic=self._settings.magic,
+            remove_overlay_elements=True,
+            delay_before_return_html=self._settings.page_wait_ms / 1000.0,
+            excluded_tags=["nav", "header", "footer", "aside"],
+            word_count_threshold=10,
+        )
+
+        res = await run_with_retries(fast_cfg)
+        last_err = None
+        if not getattr(res, "success", False):
+            last_err = getattr(res, "error_message", None)
+            res = None
+
+        if res is None or not getattr(res, "success", False):
+            msg = last_err or "crawl failed"
+            hard_cfg = CrawlerRunConfig(
+                cache_mode=CacheMode.BYPASS,
+                stream=False,
+                wait_for=wait_for_hard,
+                page_timeout=max(page_timeout, 90_000),
+                wait_until="load",
+                scan_full_page=True,
+                scroll_delay=max(0.2, self._settings.scroll_step_wait_ms / 1000.0),
+                magic=True,
+                simulate_user=True,
+                override_navigator=True,
+                remove_overlay_elements=True,
+                delay_before_return_html=max(0.2, self._settings.page_wait_ms / 1000.0),
+                excluded_tags=["nav", "header", "footer", "aside"],
+                word_count_threshold=10,
+            )
+            res = await run_with_retries(hard_cfg)
+            if not getattr(res, "success", False):
+                raise RuntimeError(msg)
+
+        final_url = getattr(res, "url", None) or url
+        title = getattr(res, "title", None)
+        html = _pick_html(res)
+        md = _pick_markdown(res)
+
+        if css_selector_hard:
+            extract_cfg = CrawlerRunConfig(
+                cache_mode=CacheMode.BYPASS,
+                stream=False,
+                wait_for=wait_for_hard,
+                page_timeout=page_timeout,
+                magic=self._settings.magic,
+                remove_overlay_elements=True,
+                delay_before_return_html=self._settings.page_wait_ms / 1000.0,
+                excluded_tags=["nav", "header", "footer", "aside"],
+                word_count_threshold=10,
+                css_selector=css_selector_hard,
+            )
+            res_extract = await run_with_retries(extract_cfg)
+            if getattr(res_extract, "success", False):
+                md2 = _pick_markdown(res_extract)
+                if md2.strip():
+                    md = md2
+
+        content_format = options.format
+        if content_format == "html":
+            content = html
+        else:
+            content = md or html
+            content_format = "markdown" if md else "html"
+
+        if _need_stronger_attempt(url, content) and getattr(res, "success", False):
+            hard_cfg = CrawlerRunConfig(
+                cache_mode=CacheMode.BYPASS,
+                stream=False,
+                wait_for=wait_for_hard,
+                page_timeout=max(page_timeout, 90_000),
+                wait_until="load",
+                scan_full_page=True,
+                scroll_delay=max(0.2, self._settings.scroll_step_wait_ms / 1000.0),
+                magic=True,
+                simulate_user=True,
+                override_navigator=True,
+                remove_overlay_elements=True,
+                delay_before_return_html=max(0.2, self._settings.page_wait_ms / 1000.0),
+                excluded_tags=["nav", "header", "footer", "aside"],
+                word_count_threshold=10,
+            )
+            res2 = await run_with_retries(hard_cfg)
+            if getattr(res2, "success", False):
+                final_url = getattr(res2, "url", None) or final_url
+                title = getattr(res2, "title", None) or title
+                html = _pick_html(res2) or html
+                md = _pick_markdown(res2) or md
+                if content_format == "html":
+                    content = html
+                else:
+                    content = md or html
+                    content_format = "markdown" if md else "html"
+
+        if not isinstance(title, str) or not title.strip():
+            t = _extract_title_from_html(html) if html else ""
+            if not t and md:
+                t = _extract_title_from_markdown(md)
+            if not t:
+                t = await _extract_title_via_http(final_url)
+            title = t or None
+
+        if options.max_chars > 0 and len(content) > options.max_chars:
+            content = content[: options.max_chars]
+
+        raw_links = getattr(res, "links", None)
+        links = _normalize_links(raw_links)
+
+        return build_result_dict(
+            url=url,
+            final_url=final_url,
+            title=title,
+            content=content,
+            content_format=content_format,
+            links=links,
+        )
+
+
+async def fetch_many(
+    *,
+    service: CrawlService,
+    urls: list[str],
+    options: FetchOptions,
+    concurrency: int,
+) -> list[Union[dict[str, object], dict[str, str]]]:
+    sem = asyncio.Semaphore(max(1, concurrency))
+
+    async def one(u: str) -> Union[dict[str, object], dict[str, str]]:
+        async with sem:
+            try:
+                return await service.fetch(url=u, options=options)
+            except Exception as e:
+                return {"url": u, "error": str(e)}
+
+    return await asyncio.gather(*(one(u) for u in urls))

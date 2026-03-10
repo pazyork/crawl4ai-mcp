@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "crawl4ai-mcp"
+version = "0.1.0"
+description = "An MCP server built on crawl4ai for reliable webpage extraction"
+readme = "README.md"
+requires-python = ">=3.9,<3.13"
+license = { text = "AGPL-3.0-or-later" }
+authors = [{ name = "crawl4ai-mcp contributors" }]
+dependencies = [
+  "crawl4ai==0.6.2",
+  "mcp>=1.2.0",
+  "pydantic>=2.6.0",
+  "pydantic-settings>=2.2.0",
+  "httpx>=0.27.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0.0",
+  "pytest-asyncio>=0.23.0",
+  "ruff>=0.5.0",
+]
+
+[project.scripts]
+crawl4ai-mcp = "crawl4ai_mcp.__main__:main"
+
+[tool.pytest.ini_options]
+addopts = "-q"
+asyncio_mode = "auto"
+markers = [
+  "integration: network/browser dependent tests",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["UP007", "UP045", "UP017"]
