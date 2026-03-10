@@ -28,7 +28,11 @@ def _maybe_truncate(s: str, max_chars: int) -> str:
 async def _maybe_llm_clean(*, url: str, content: str, title: Optional[str]) -> dict[str, object]:
     cfg = load_openai_config()
     if not cfg.enabled:
-        return {"llm_used": False}
+        msg = "OpenAI-compatible config missing (OPENAI_BASE_URL/OPENAI_API_KEY/OPENAI_MODEL)"
+        return {
+            "llm_used": False,
+            "llm_error": msg,
+        }
     system = (
         "You extract the main readable content from a webpage crawl. "
         "Return JSON with keys: title, markdown. "
@@ -87,6 +91,14 @@ async def fetch_urls(
     options = FetchOptions(format=format, max_chars=max_chars or settings.max_content_chars)
     results = await fetch_many(service=service, urls=urls, options=options, concurrency=concurrency)
     if use_llm:
+        cfg = load_openai_config()
+        if not cfg.enabled:
+            msg = "OpenAI-compatible config missing (OPENAI_BASE_URL/OPENAI_API_KEY/OPENAI_MODEL)"
+            for r in results:
+                if isinstance(r, dict) and "error" not in r:
+                    r["llm_used"] = False
+                    r["llm_error"] = msg
+            return {"results": results}
         for r in results:
             if not isinstance(r, dict) or "error" in r:
                 continue
