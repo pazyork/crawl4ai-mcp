@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from crawl4ai_mcp.crawler import (
     _ensure_title_h1,
+    _extract_image_urls_from_html,
     _looks_like_interstitial,
     _remove_data_image_lines,
     _remove_markdown_links_to_domain,
@@ -42,3 +43,8 @@ def test_squeeze_blank_lines() -> None:
 def test_remove_markdown_links_to_domain() -> None:
     md = "a [X](https://zhida.zhihu.com/search?q=1) b"
     assert _remove_markdown_links_to_domain(md, "zhida.zhihu.com") == "a X b"
+
+
+def test_extract_image_urls_from_html() -> None:
+    html = '<img data-src="https://a.com/1.png"/><img src="data:image/png,abc"/><img src="https://b.com/2.jpg">'
+    assert _extract_image_urls_from_html(html) == ["https://a.com/1.png", "https://b.com/2.jpg"]

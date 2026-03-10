@@ -321,6 +321,31 @@ def _clean_zhihu_article_markdown(md: str) -> str:
     return "\n".join(out)
 
 
+def _extract_image_urls_from_html(html: str) -> list[str]:
+    urls: list[str] = []
+    for m in re.finditer(r"<img\b[^>]*>", html, flags=re.IGNORECASE):
+        tag = m.group(0)
+        m2 = re.search(r'\bdata-src\s*=\s*"([^"]+)"', tag, flags=re.IGNORECASE)
+        if not m2:
+            m2 = re.search(r'\bsrc\s*=\s*"([^"]+)"', tag, flags=re.IGNORECASE)
+        if not m2:
+            continue
+        u = m2.group(1).strip()
+        if not u:
+            continue
+        if u.startswith("data:image"):
+            continue
+        urls.append(u)
+    out: list[str] = []
+    seen: set[str] = set()
+    for u in urls:
+        if u in seen:
+            continue
+        seen.add(u)
+        out.append(u)
+    return out
+
+
 def _clean_zhihu_profile_markdown(md: str) -> str:
     out: list[str] = []
     for line in md.splitlines():
@@ -568,6 +593,12 @@ class CrawlService:
                 content = _clean_zhihu_profile_markdown(content)
             if "zhuanlan.zhihu.com" in host:
                 content = _clean_zhihu_article_markdown(content)
+
+            if "mp.weixin.qq.com" in host and html:
+                imgs = _extract_image_urls_from_html(html)
+                if imgs:
+                    lines = ["", "## Images", *[f"- {u}" for u in imgs]]
+                    content = content.rstrip() + "\n" + "\n".join(lines)
             content = _squeeze_blank_lines(content)
 
         if options.max_chars > 0 and len(content) > options.max_chars:
