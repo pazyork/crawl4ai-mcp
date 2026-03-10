@@ -24,8 +24,8 @@ class Settings(BaseSettings):
     viewport_height_min: int = Field(default=640)
     viewport_height_max: int = Field(default=980)
 
-
-    navigation_timeout_ms: int = Field(default=45_000)
+    navigation_timeout_ms: int = Field(default=30_000)
+    wait_until: str = Field(default="load")
     page_wait_ms: int = Field(default=800)
     max_scroll_steps: int = Field(default=12)
     scroll_step_wait_ms: int = Field(default=500)

@@ -12,7 +12,7 @@ from urllib.parse import urlparse
 
 import httpx
 from crawl4ai import AsyncWebCrawler
-from crawl4ai.async_configs import BrowserConfig, CrawlerRunConfig
+from crawl4ai.async_configs import BrowserConfig, CrawlerRunConfig, ProxyConfig
 from crawl4ai.cache_context import CacheMode
 
 from .config import Settings
@@ -55,6 +55,18 @@ def _scroll_js(max_steps: int, step_wait_ms: int) -> str:
 
 def _domain_overrides(url: str) -> dict[str, Any]:
     host = urlparse(url).netloc.lower()
+    if "ainew.me" in host:
+        return {
+            "wait_for_fast": "css:main",
+            "wait_for_hard": (
+                "js:() => document.querySelectorAll(\"a[href^='/articles/']\").length >= 8"
+            ),
+            "page_timeout": 30_000,
+            "css_selector_hard": "main",
+            "wait_until": "networkidle",
+            "wait_for_images": True,
+            "delay_before_return_html": 1.5,
+        }
     if "mp.weixin.qq.com" in host:
         return {
             "wait_for_fast": "body",
@@ -98,6 +110,30 @@ def _domain_overrides(url: str) -> dict[str, Any]:
             "css_selector_hard": "#content_views",
         }
     return {}
+
+
+def _normalize_proxy_url(proxy: str) -> str:
+    s = proxy.strip()
+    if not s:
+        raise ValueError("proxy must not be empty")
+    if s.isdigit():
+        return f"http://127.0.0.1:{s}"
+    if s.startswith("socket5://"):
+        return "socks5://" + s[len("socket5://") :]
+    if "://" not in s:
+        if re.fullmatch(r"[^:/\s]+:\d+", s):
+            return f"http://{s}"
+        raise ValueError("proxy must start with http://, https://, socks5://, or socks5h://")
+    parsed = urlparse(s)
+    if parsed.scheme not in {"http", "https", "socks5", "socks5h"}:
+        raise ValueError("proxy must start with http://, https://, socks5://, or socks5h://")
+    return s
+
+
+def _build_proxy_config(proxy: Optional[str]) -> Optional[ProxyConfig]:
+    if not proxy:
+        return None
+    return ProxyConfig(server=_normalize_proxy_url(proxy))
 
 
 def _normalize_links(raw: Any) -> list[dict[str, str]]:
@@ -219,6 +255,9 @@ def _looks_like_interstitial(content: str) -> bool:
         "去验证",
         "请开启 JavaScript",
         "Access Denied",
+        "执行安全验证",
+        "正在等待",
+        "Cloudflare",
     )
     return any(m in s for m in markers)
 
@@ -389,14 +428,16 @@ class CrawlService:
             min(self._settings.viewport_height_min, self._settings.viewport_height_max),
             max(self._settings.viewport_height_min, self._settings.viewport_height_max),
         )
+        proxy_config = _build_proxy_config(self._settings.proxy)
         browser_kwargs: dict[str, Any] = {
             "headless": self._settings.headless,
-            "proxy": self._settings.proxy,
             "storage_state": storage_state,
             "use_persistent_context": self._settings.use_persistent_context,
             "viewport_width": vw,
             "viewport_height": vh,
         }
+        if proxy_config:
+            browser_kwargs["proxy_config"] = proxy_config
         if self._settings.user_data_dir:
             browser_kwargs["user_data_dir"] = self._settings.user_data_dir
         if self._settings.user_agent:
@@ -446,6 +487,11 @@ class CrawlService:
         wait_for_hard = overrides.get("wait_for_hard", wait_for_fast)
         css_selector_hard = overrides.get("css_selector_hard")
         page_timeout = int(overrides.get("page_timeout", self._settings.navigation_timeout_ms))
+        wait_until = str(overrides.get("wait_until", self._settings.wait_until))
+        wait_for_images = bool(overrides.get("wait_for_images", False))
+        delay_before_return_html = float(
+            overrides.get("delay_before_return_html", self._settings.page_wait_ms / 1000.0)
+        )
 
         mean_delay = max(0.0, float(self._settings.mean_delay_s))
         max_jitter = max(0.0, float(self._settings.max_delay_jitter_s))
@@ -455,11 +501,13 @@ class CrawlService:
         fast_cfg = CrawlerRunConfig(
             cache_mode=CacheMode.BYPASS,
             stream=False,
+            wait_until=wait_until,
             wait_for=wait_for_fast,
             page_timeout=page_timeout,
             magic=self._settings.magic,
             remove_overlay_elements=True,
-            delay_before_return_html=self._settings.page_wait_ms / 1000.0,
+            wait_for_images=wait_for_images,
+            delay_before_return_html=delay_before_return_html,
             excluded_tags=["nav", "header", "footer", "aside"],
             word_count_threshold=10,
             locale=self._settings.locale,
@@ -481,15 +529,16 @@ class CrawlService:
                 cache_mode=CacheMode.BYPASS,
                 stream=False,
                 wait_for=wait_for_hard,
-                page_timeout=max(page_timeout, 90_000),
-                wait_until="load",
+                page_timeout=page_timeout,
+                wait_until=wait_until,
                 scan_full_page=True,
                 scroll_delay=max(0.2, self._settings.scroll_step_wait_ms / 1000.0),
                 magic=True,
                 simulate_user=True,
                 override_navigator=True,
                 remove_overlay_elements=True,
-                delay_before_return_html=max(0.2, self._settings.page_wait_ms / 1000.0),
+                wait_for_images=wait_for_images,
+                delay_before_return_html=max(0.2, delay_before_return_html),
                 excluded_tags=["nav", "header", "footer", "aside"],
                 word_count_threshold=10,
                 locale=self._settings.locale,
@@ -510,11 +559,13 @@ class CrawlService:
             extract_cfg = CrawlerRunConfig(
                 cache_mode=CacheMode.BYPASS,
                 stream=False,
+                wait_until=wait_until,
                 wait_for=wait_for_hard,
                 page_timeout=page_timeout,
                 magic=self._settings.magic,
                 remove_overlay_elements=True,
-                delay_before_return_html=self._settings.page_wait_ms / 1000.0,
+                wait_for_images=wait_for_images,
+                delay_before_return_html=delay_before_return_html,
                 excluded_tags=["nav", "header", "footer", "aside"],
                 word_count_threshold=10,
                 css_selector=css_selector_hard,
@@ -541,15 +592,16 @@ class CrawlService:
                 cache_mode=CacheMode.BYPASS,
                 stream=False,
                 wait_for=wait_for_hard,
-                page_timeout=max(page_timeout, 90_000),
-                wait_until="load",
+                page_timeout=page_timeout,
+                wait_until=wait_until,
                 scan_full_page=True,
                 scroll_delay=max(0.2, self._settings.scroll_step_wait_ms / 1000.0),
                 magic=True,
                 simulate_user=True,
                 override_navigator=True,
                 remove_overlay_elements=True,
-                delay_before_return_html=max(0.2, self._settings.page_wait_ms / 1000.0),
+                wait_for_images=wait_for_images,
+                delay_before_return_html=max(0.2, delay_before_return_html),
                 excluded_tags=["nav", "header", "footer", "aside"],
                 word_count_threshold=10,
                 locale=self._settings.locale,
