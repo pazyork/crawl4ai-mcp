@@ -1,5 +1,9 @@
 # crawl4ai-mcp
 
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+[![Python 3.9-3.12](https://img.shields.io/badge/python-3.9--3.12-blue.svg)](https://www.python.org/downloads/)
+[![GitHub stars](https://img.shields.io/github/stars/pazyork/crawl4ai-mcp?style=social)](https://github.com/pazyork/crawl4ai-mcp)
+
 一个基于 **Crawl4AI + Playwright** 的 **MCP（Model Context Protocol）** 服务。
 
 用于让 Agent（Claude Code / Cursor / Windsurf / Claude Desktop 等）稳定抓取网页，并返回**正文优先、可直接消费**的 Markdown（或 HTML），并支持可选的 OpenAI-compatible LLM 做增强清洗（可关闭）。
