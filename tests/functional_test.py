@@ -2,14 +2,12 @@
 from __future__ import annotations
 
 import asyncio
-import os
 import sys
 import time
 from typing import Any
 
 from crawl4ai_mcp.config import get_settings
 from crawl4ai_mcp.crawler import CrawlService, FetchOptions
-
 
 TEST_CASES = [
     {
@@ -165,7 +163,7 @@ def print_results(data: dict[str, Any]) -> None:
 async def main() -> None:
     print("开始功能测试...")
     print(f"测试用例数: {len(TEST_CASES)}")
-    print(f"并发执行: 是")
+    print("并发执行: 是")
     
     data = await test_concurrent()
     print_results(data)

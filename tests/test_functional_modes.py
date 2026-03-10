@@ -8,7 +8,6 @@ import pytest
 from crawl4ai_mcp.config import get_settings
 from crawl4ai_mcp.crawler import CrawlService, FetchOptions
 
-
 TEST_URLS = [
     "https://zhuanlan.zhihu.com/p/1947787094299746426",
     "https://www.zhihu.com/people/phppan",
