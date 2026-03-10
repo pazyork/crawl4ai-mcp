@@ -24,7 +24,7 @@ TEST_CASES = [
 ]
 
 
-async def test_single(service: CrawlService, test_case: dict[str, Any]) -> dict[str, Any]:
+async def _test_single_case(service: CrawlService, test_case: dict[str, Any]) -> dict[str, Any]:
     start = time.time()
     try:
         res = await service.fetch(
@@ -84,7 +84,7 @@ async def test_concurrent() -> dict[str, Any]:
     settings = get_settings()
     
     async with CrawlService(settings) as service:
-        tasks = [test_single(service, tc) for tc in TEST_CASES]
+        tasks = [_test_single_case(service, tc) for tc in TEST_CASES]
         results = await asyncio.gather(*tasks)
     
     elapsed = time.time() - start

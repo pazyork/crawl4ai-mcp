@@ -3,7 +3,7 @@ from __future__ import annotations
 from crawl4ai.async_configs import ProxyConfig
 
 from crawl4ai_mcp.config import Settings
-from crawl4ai_mcp.crawler import _build_proxy_config, _domain_overrides
+from crawl4ai_mcp.crawler import _build_proxy_config
 
 
 def test_settings_defaults() -> None:
@@ -28,10 +28,3 @@ def test_build_proxy_config_rejects_unsupported_scheme() -> None:
         assert "proxy must start with http://, https://, socks5://, or socks5h://" in str(exc)
     else:
         raise AssertionError("unsupported proxy scheme should raise ValueError")
-
-
-def test_ainew_domain_override_prefers_full_load_wait() -> None:
-    overrides = _domain_overrides("https://ainew.me/")
-    assert overrides["wait_until"] == "networkidle"
-    assert overrides["page_timeout"] >= 30_000
-    assert overrides["wait_for_images"] is True

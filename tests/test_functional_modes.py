@@ -1,12 +1,9 @@
 from __future__ import annotations
 
-import os
-
 import pytest
 
 from crawl4ai_mcp.config import get_settings
 from crawl4ai_mcp.crawler import CrawlService, FetchOptions
-
 
 TEST_URL = "https://example.com"
 
