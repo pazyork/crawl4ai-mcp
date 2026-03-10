@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import random
 import re
 from dataclasses import dataclass
 from html import unescape
@@ -249,6 +250,87 @@ def _remove_data_image_lines(md: str) -> str:
     return "\n".join(out)
 
 
+def _strip_html_comments(md: str) -> str:
+    return re.sub(r"<!--.*?-->", "", md, flags=re.DOTALL)
+
+
+def _strip_zero_width(md: str) -> str:
+    return md.replace("\u200b", "").replace("\ufeff", "")
+
+
+def _clean_medium_markdown(md: str) -> str:
+    drop_exact = {
+        "Follow",
+        "Subscribe",
+        "Listen",
+        "Share",
+        "Remember me for faster sign in",
+    }
+    out: list[str] = []
+    for line in md.splitlines():
+        s = line.strip()
+        if s in drop_exact:
+            continue
+        if "medium.com/m/signin" in s or "/m/signin" in s:
+            continue
+        if s.startswith("## Get ") and "stories in your inbox" in s:
+            continue
+        if s.startswith("Join Medium"):
+            continue
+        out.append(line)
+    return "\n".join(out)
+
+
+def _clean_csdn_markdown(md: str) -> str:
+    out: list[str] = []
+    for line in md.splitlines():
+        if "一键获取完整项目代码markdown" in line:
+            continue
+        if "csdnimg.cn" in line and "icon-arrowblack" in line:
+            continue
+        if re.match(r"^\s*[*-]\s*\d+\s*$", line):
+            continue
+        out.append(line)
+    return "\n".join(out)
+
+
+def _remove_markdown_links_to_domain(md: str, domain: str) -> str:
+    pattern = rf"\[([^\]]*)\]\(https?://{re.escape(domain)}/[^)]+\)"
+
+    def repl(m: re.Match[str]) -> str:
+        txt = m.group(1)
+        return txt if txt.strip() else ""
+
+    return re.sub(pattern, repl, md)
+
+
+def _clean_zhihu_article_markdown(md: str) -> str:
+    md = _remove_markdown_links_to_domain(md, "zhida.zhihu.com")
+    out: list[str] = []
+    for line in md.splitlines():
+        s = line.strip()
+        if s.startswith("编辑于 "):
+            continue
+        if s in {"分享", "申请转载", "申请转载​", "​分享"}:
+            continue
+        if "赞同" in s and ("评论" in s or "收藏" in s):
+            continue
+        if s.startswith("[") and "www.zhihu.com/topic/" in s:
+            continue
+        out.append(line)
+    return "\n".join(out)
+
+
+def _clean_zhihu_profile_markdown(md: str) -> str:
+    out: list[str] = []
+    for line in md.splitlines():
+        s = line.strip()
+        if s.startswith("IP 属地"):
+            continue
+        out.append(line)
+    return "\n".join(out)
+
+
 def _squeeze_blank_lines(md: str) -> str:
     lines = md.splitlines()
     out: list[str] = []
@@ -274,11 +356,21 @@ class CrawlService:
         if self._crawler is not None:
             return self
         storage_state = _load_storage_state(self._settings.cookies_json)
+        vw = random.randint(
+            min(self._settings.viewport_width_min, self._settings.viewport_width_max),
+            max(self._settings.viewport_width_min, self._settings.viewport_width_max),
+        )
+        vh = random.randint(
+            min(self._settings.viewport_height_min, self._settings.viewport_height_max),
+            max(self._settings.viewport_height_min, self._settings.viewport_height_max),
+        )
         browser_kwargs: dict[str, Any] = {
             "headless": self._settings.headless,
             "proxy": self._settings.proxy,
             "storage_state": storage_state,
             "use_persistent_context": self._settings.use_persistent_context,
+            "viewport_width": vw,
+            "viewport_height": vh,
         }
         if self._settings.user_data_dir:
             browser_kwargs["user_data_dir"] = self._settings.user_data_dir
@@ -289,6 +381,10 @@ class CrawlService:
 
         if self._settings.accept_language:
             browser_kwargs["headers"] = {"Accept-Language": self._settings.accept_language}
+
+        browser_kwargs["extra_args"] = [
+            "--disable-blink-features=AutomationControlled",
+        ]
         browser_cfg = BrowserConfig(**browser_kwargs)
         self._crawler = AsyncWebCrawler(config=browser_cfg)
         await self._crawler.__aenter__()
@@ -326,6 +422,11 @@ class CrawlService:
         css_selector_hard = overrides.get("css_selector_hard")
         page_timeout = int(overrides.get("page_timeout", self._settings.navigation_timeout_ms))
 
+        mean_delay = max(0.0, float(self._settings.mean_delay_s))
+        max_jitter = max(0.0, float(self._settings.max_delay_jitter_s))
+        mean_delay = mean_delay + random.random() * (mean_delay * 0.6)
+        max_jitter = max_jitter + random.random() * (max_jitter * 0.6)
+
         fast_cfg = CrawlerRunConfig(
             cache_mode=CacheMode.BYPASS,
             stream=False,
@@ -336,6 +437,11 @@ class CrawlService:
             delay_before_return_html=self._settings.page_wait_ms / 1000.0,
             excluded_tags=["nav", "header", "footer", "aside"],
             word_count_threshold=10,
+            locale=self._settings.locale,
+            timezone_id=self._settings.timezone_id,
+            mean_delay=mean_delay,
+            max_range=max_jitter,
+            override_navigator=True,
         )
 
         res = await run_with_retries(fast_cfg)
@@ -361,6 +467,10 @@ class CrawlService:
                 delay_before_return_html=max(0.2, self._settings.page_wait_ms / 1000.0),
                 excluded_tags=["nav", "header", "footer", "aside"],
                 word_count_threshold=10,
+                locale=self._settings.locale,
+                timezone_id=self._settings.timezone_id,
+                mean_delay=mean_delay,
+                max_range=max_jitter,
             )
             res = await run_with_retries(hard_cfg)
             if not getattr(res, "success", False):
@@ -383,6 +493,10 @@ class CrawlService:
                 excluded_tags=["nav", "header", "footer", "aside"],
                 word_count_threshold=10,
                 css_selector=css_selector_hard,
+                locale=self._settings.locale,
+                timezone_id=self._settings.timezone_id,
+                mean_delay=mean_delay,
+                max_range=max_jitter,
             )
             res_extract = await run_with_retries(extract_cfg)
             if getattr(res_extract, "success", False):
@@ -413,6 +527,10 @@ class CrawlService:
                 delay_before_return_html=max(0.2, self._settings.page_wait_ms / 1000.0),
                 excluded_tags=["nav", "header", "footer", "aside"],
                 word_count_threshold=10,
+                locale=self._settings.locale,
+                timezone_id=self._settings.timezone_id,
+                mean_delay=mean_delay,
+                max_range=max_jitter,
             )
             res2 = await run_with_retries(hard_cfg)
             if getattr(res2, "success", False):
@@ -439,7 +557,17 @@ class CrawlService:
             if "medium.com" in host:
                 content = _trim_to_first_h1(content)
             content = _ensure_title_h1(content, title)
+            content = _strip_html_comments(content)
+            content = _strip_zero_width(content)
             content = _remove_data_image_lines(content)
+            if "medium.com" in host:
+                content = _clean_medium_markdown(content)
+            if "csdn.net" in host:
+                content = _clean_csdn_markdown(content)
+            if host == "www.zhihu.com":
+                content = _clean_zhihu_profile_markdown(content)
+            if "zhuanlan.zhihu.com" in host:
+                content = _clean_zhihu_article_markdown(content)
             content = _squeeze_blank_lines(content)
 
         if options.max_chars > 0 and len(content) > options.max_chars:

@@ -19,6 +19,12 @@ class Settings(BaseSettings):
     use_persistent_context: bool = Field(default=False)
     user_data_dir: Optional[str] = Field(default=None)
 
+    viewport_width_min: int = Field(default=980)
+    viewport_width_max: int = Field(default=1480)
+    viewport_height_min: int = Field(default=640)
+    viewport_height_max: int = Field(default=980)
+
+
     navigation_timeout_ms: int = Field(default=45_000)
     page_wait_ms: int = Field(default=800)
     max_scroll_steps: int = Field(default=12)
@@ -29,6 +35,12 @@ class Settings(BaseSettings):
     max_retries: int = Field(default=1)
 
     accept_language: Optional[str] = Field(default="zh-CN,zh;q=0.9,en;q=0.8")
+
+    locale: Optional[str] = Field(default="zh-CN")
+    timezone_id: Optional[str] = Field(default="Asia/Shanghai")
+
+    mean_delay_s: float = Field(default=0.12)
+    max_delay_jitter_s: float = Field(default=0.25)
 
 
 def get_settings() -> Settings:

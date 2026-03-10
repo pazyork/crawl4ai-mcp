@@ -68,6 +68,14 @@ crawl4ai-mcp
 - `CRAWL4AI_MCP_USE_PERSISTENT_CONTEXT`：复用浏览器 profile（默认 `false`）
 - `CRAWL4AI_MCP_USER_DATA_DIR`：浏览器 profile 目录（可选，建议配合 persistent_context 用于反爬站点）
 
+伪装/随机化（可选，默认已开启一些随机性）：
+
+- `CRAWL4AI_MCP_VIEWPORT_WIDTH_MIN` / `CRAWL4AI_MCP_VIEWPORT_WIDTH_MAX`
+- `CRAWL4AI_MCP_VIEWPORT_HEIGHT_MIN` / `CRAWL4AI_MCP_VIEWPORT_HEIGHT_MAX`
+- `CRAWL4AI_MCP_LOCALE`（默认 `zh-CN`）
+- `CRAWL4AI_MCP_TIMEZONE_ID`（默认 `Asia/Shanghai`）
+- `CRAWL4AI_MCP_MEAN_DELAY_S` / `CRAWL4AI_MCP_MAX_DELAY_JITTER_S`（请求间隔随机抖动）
+
 OpenAI-compatible（可选）：
 
 - `OPENAI_BASE_URL`

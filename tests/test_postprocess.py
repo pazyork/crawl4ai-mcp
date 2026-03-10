@@ -4,6 +4,7 @@ from crawl4ai_mcp.crawler import (
     _ensure_title_h1,
     _looks_like_interstitial,
     _remove_data_image_lines,
+    _remove_markdown_links_to_domain,
     _squeeze_blank_lines,
     _trim_to_first_h1,
 )
@@ -36,3 +37,8 @@ def test_remove_data_image_lines() -> None:
 def test_squeeze_blank_lines() -> None:
     md = "a\n\n\n\nB\n\n"
     assert _squeeze_blank_lines(md) == "a\n\nB\n"
+
+
+def test_remove_markdown_links_to_domain() -> None:
+    md = "a [X](https://zhida.zhihu.com/search?q=1) b"
+    assert _remove_markdown_links_to_domain(md, "zhida.zhihu.com") == "a X b"
