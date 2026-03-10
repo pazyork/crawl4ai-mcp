@@ -64,6 +64,7 @@ crawl4ai-mcp
 - `CRAWL4AI_MCP_USER_AGENT`：自定义 UA（可选）
 - `CRAWL4AI_MCP_PROXY`：代理（可选）
 - `CRAWL4AI_MCP_COOKIES_JSON`：cookies JSON 文件路径（可选，Playwright 格式）
+- `CRAWL4AI_MCP_MAX_RETRIES`：失败重试次数（默认 `1`）
 
 OpenAI-compatible（可选）：
 
@@ -81,7 +82,8 @@ OpenAI-compatible（可选）：
 {
   "url": "https://example.com",
   "format": "markdown",
-  "max_chars": 200000
+  "max_chars": 200000,
+  "use_llm": false
 }
 ```
 
@@ -108,7 +110,25 @@ OpenAI-compatible（可选）：
   "urls": ["https://a.com", "https://b.com"],
   "format": "markdown",
   "max_chars": 200000,
-  "concurrency": 3
+  "concurrency": 3,
+  "use_llm": false
+}
+```
+
+## Claude Desktop/Windsurf 配置示例
+
+将如下片段加入你的 MCP 配置（路径和命令按实际环境调整）：
+
+```json
+{
+  "mcpServers": {
+    "crawl4ai": {
+      "command": "crawl4ai-mcp",
+      "env": {
+        "CRAWL4AI_MCP_HEADLESS": "true"
+      }
+    }
+  }
 }
 ```
 
