@@ -65,6 +65,8 @@ crawl4ai-mcp
 - `CRAWL4AI_MCP_PROXY`：代理（可选）
 - `CRAWL4AI_MCP_COOKIES_JSON`：cookies JSON 文件路径（可选，Playwright 格式）
 - `CRAWL4AI_MCP_MAX_RETRIES`：失败重试次数（默认 `1`）
+- `CRAWL4AI_MCP_USE_PERSISTENT_CONTEXT`：复用浏览器 profile（默认 `false`）
+- `CRAWL4AI_MCP_USER_DATA_DIR`：浏览器 profile 目录（可选，建议配合 persistent_context 用于反爬站点）
 
 OpenAI-compatible（可选）：
 
@@ -148,6 +150,18 @@ pytest
 
 ```bash
 python -m crawl4ai_mcp.smoke_golden
+```
+
+输出完整 Markdown：
+
+```bash
+CRAWL4AI_MCP_SMOKE_FULL=1 python -m crawl4ai_mcp.smoke_golden
+```
+
+保存到目录（每个 URL 一个 `.md` 文件）：
+
+```bash
+CRAWL4AI_MCP_SMOKE_DIR=./_golden_outputs python -m crawl4ai_mcp.smoke_golden
 ```
 
 > 注意：该脚本会访问网络并启动浏览器，耗时较长。

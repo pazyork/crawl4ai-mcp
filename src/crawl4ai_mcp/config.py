@@ -16,6 +16,8 @@ class Settings(BaseSettings):
         default=None,
         description="Playwright storage_state JSON path",
     )
+    use_persistent_context: bool = Field(default=False)
+    user_data_dir: Optional[str] = Field(default=None)
 
     navigation_timeout_ms: int = Field(default=45_000)
     page_wait_ms: int = Field(default=800)
@@ -25,6 +27,8 @@ class Settings(BaseSettings):
 
     magic: bool = Field(default=False)
     max_retries: int = Field(default=1)
+
+    accept_language: Optional[str] = Field(default="zh-CN,zh;q=0.9,en;q=0.8")
 
 
 def get_settings() -> Settings:

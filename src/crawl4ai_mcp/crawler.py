@@ -252,11 +252,17 @@ class CrawlService:
             "headless": self._settings.headless,
             "proxy": self._settings.proxy,
             "storage_state": storage_state,
+            "use_persistent_context": self._settings.use_persistent_context,
         }
+        if self._settings.user_data_dir:
+            browser_kwargs["user_data_dir"] = self._settings.user_data_dir
         if self._settings.user_agent:
             browser_kwargs["user_agent"] = self._settings.user_agent
         else:
             browser_kwargs["user_agent_mode"] = "random"
+
+        if self._settings.accept_language:
+            browser_kwargs["headers"] = {"Accept-Language": self._settings.accept_language}
         browser_cfg = BrowserConfig(**browser_kwargs)
         self._crawler = AsyncWebCrawler(config=browser_cfg)
         await self._crawler.__aenter__()
