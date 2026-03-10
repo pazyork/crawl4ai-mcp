@@ -32,7 +32,7 @@
 | 抓单页 | 统一传 `urls: ["https://example.com"]` |
 | 输出 | `title + content + links + blocked + llm_used/llm_error` |
 | 非 LLM 模式 | 默认可用，不依赖模型 |
-| LLM 模式 | `use_llm=true` 后做二次清洗，可带 `llm_instruction` |
+| LLM 模式 | **默认关闭**，只有 `use_llm=true` 才会做二次清洗，可带 `llm_instruction` |
 | 降级策略 | LLM 失败自动回落到非 LLM 结果 |
 | 反爬能力 | 代理 / cookies / persistent profile / 随机化浏览器行为 |
 | 协议 | **AGPL-3.0-or-later** |
@@ -83,6 +83,7 @@ flowchart LR
 | 站点规则 | Zhihu / 微信公众号 / Medium / CSDN / Claude Docs |
 | blocked 标记 | 命中验证页 / interstitial / denied 特征时置 `blocked=true` |
 | 并发抓取 | `concurrency` 控制并发上限 |
+| 默认最长单次等待 | **30s**，可通过环境变量配置 |
 
 ### 可选 LLM 模式
 
@@ -145,6 +146,19 @@ flowchart LR
 | `simulate_user` | 强力回退模式启用 |
 | proxy / cookies / persistent profile | 已支持 |
 
+### 代理输入格式
+
+`CRAWL4AI_MCP_PROXY` 支持这些写法：
+
+| 输入 | 实际解释 |
+|---|---|
+| `http://127.0.0.1:7890` | HTTP 代理 |
+| `https://127.0.0.1:7890` | HTTPS 代理 |
+| `socks5://127.0.0.1:7890` | SOCKS5 代理 |
+| `socket5://127.0.0.1:7890` | 自动兼容为 `socks5://...` |
+| `127.0.0.1:7890` | 自动补成 `http://127.0.0.1:7890` |
+| `7890` | 自动补成 `http://127.0.0.1:7890` |
+
 所以 README 应该诚实表达为：**带随机化的人类化行为 + 实用反爬配置**，而不是夸成“绝对隐身”。
 
 ---
@@ -182,6 +196,9 @@ crawl4ai-mcp
       "command": "crawl4ai-mcp",
       "env": {
         "CRAWL4AI_MCP_HEADLESS": "true",
+        "CRAWL4AI_MCP_PROXY": "127.0.0.1:7890",
+        "CRAWL4AI_MCP_NAVIGATION_TIMEOUT_MS": "30000",
+        "CRAWL4AI_MCP_WAIT_UNTIL": "load",
 
         "OPENAI_BASE_URL": "https://your-openai-compatible-host",
         "OPENAI_API_KEY": "your-api-key",
@@ -194,6 +211,8 @@ crawl4ai-mcp
 
 其中大模型相关参数是 **可选项**。只要缺任意一项、配置非法，或者模型调用失败，服务都会自动回退到非 LLM 抓取结果。
 
+默认情况下 `use_llm` 是关闭的；只有工具调用时显式传 `use_llm=true` 才会启用。
+
 ---
 
 ## 运行时配置
@@ -201,10 +220,12 @@ crawl4ai-mcp
 | 环境变量 | 作用 |
 |---|---|
 | `CRAWL4AI_MCP_HEADLESS` | 是否无头运行 |
-| `CRAWL4AI_MCP_PROXY` | 上游代理 |
+| `CRAWL4AI_MCP_PROXY` | 上游代理，支持 `http://` / `https://` / `socks5://` / `host:port` / `port-only` |
 | `CRAWL4AI_MCP_COOKIES_JSON` | Playwright storage_state JSON |
 | `CRAWL4AI_MCP_USE_PERSISTENT_CONTEXT` | 是否复用浏览器 profile |
 | `CRAWL4AI_MCP_USER_DATA_DIR` | 浏览器 profile 目录 |
+| `CRAWL4AI_MCP_NAVIGATION_TIMEOUT_MS` | 默认最长单次页面等待时间，默认 `30000` |
+| `CRAWL4AI_MCP_WAIT_UNTIL` | 页面完成策略，默认 `load` |
 | `OPENAI_BASE_URL` | OpenAI-compatible base URL |
 | `OPENAI_API_KEY` | 模型服务密钥 |
 | `OPENAI_MODEL` | 模型名 |
@@ -218,6 +239,8 @@ CRAWL4AI_MCP_SMOKE_DIR=./_golden_outputs .venv/bin/python -m crawl4ai_mcp.smoke_
 ```
 
 它会把完整 Markdown 落到 `_golden_outputs/`，方便你逐页人工审查提取效果。
+
+当前金标准已覆盖：知乎专栏、知乎个人页、微信公众号、Claude Docs、Medium、CSDN、`ainew.me`、`openclaw` 仓库与 releases、`watcha.cn` 排行页。
 
 ---
 

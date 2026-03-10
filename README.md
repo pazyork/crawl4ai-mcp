@@ -32,7 +32,7 @@ It renders real pages with Playwright + Crawl4AI, returns **main-content-first M
 | Single-page fetch | Use `urls: ["https://example.com"]` |
 | Output | `title + content + links + blocked + llm_used/llm_error` |
 | Non-LLM mode | First-class, default, usable without any model |
-| LLM mode | Optional post-cleanup with `use_llm=true` + `llm_instruction` |
+| LLM mode | **Off by default**. Enabled only with `use_llm=true` + optional `llm_instruction` |
 | Fallback | Missing/failed LLM call automatically falls back to non-LLM result |
 | Anti-bot realism | proxy / cookies / persistent profile / randomized browser behavior |
 | License | **AGPL-3.0-or-later** |
@@ -145,6 +145,19 @@ The server already includes randomized browser behavior in code:
 | `simulate_user` | Yes, in stronger fallback mode |
 | Proxy / cookies / persistent profile | Supported via env vars |
 
+### Proxy input formats
+
+`CRAWL4AI_MCP_PROXY` accepts all of these:
+
+| Input | Interpreted as |
+|---|---|
+| `http://127.0.0.1:7890` | HTTP proxy |
+| `https://127.0.0.1:7890` | HTTPS proxy |
+| `socks5://127.0.0.1:7890` | SOCKS5 proxy |
+| `socket5://127.0.0.1:7890` | Auto-normalized to `socks5://...` |
+| `127.0.0.1:7890` | Auto-normalized to `http://127.0.0.1:7890` |
+| `7890` | Auto-normalized to `http://127.0.0.1:7890` |
+
 That means the README should not claim “perfect stealth”, but it can honestly claim **human-like randomization** and **practical anti-bot knobs**.
 
 ---
@@ -182,6 +195,9 @@ crawl4ai-mcp
       "command": "crawl4ai-mcp",
       "env": {
         "CRAWL4AI_MCP_HEADLESS": "true",
+        "CRAWL4AI_MCP_PROXY": "127.0.0.1:7890",
+        "CRAWL4AI_MCP_NAVIGATION_TIMEOUT_MS": "30000",
+        "CRAWL4AI_MCP_WAIT_UNTIL": "load",
 
         "OPENAI_BASE_URL": "https://your-openai-compatible-host",
         "OPENAI_API_KEY": "your-api-key",
@@ -192,7 +208,7 @@ crawl4ai-mcp
 }
 ```
 
-LLM-related env vars are **optional**. If any of them is missing, invalid, or the model call fails, the server automatically falls back to non-LLM extraction.
+LLM-related env vars are **optional**. `use_llm` is still **off by default** at call time. If any LLM env is missing, invalid, or the model call fails, the server automatically falls back to non-LLM extraction.
 
 ---
 
@@ -201,10 +217,12 @@ LLM-related env vars are **optional**. If any of them is missing, invalid, or th
 | Env var | Purpose |
 |---|---|
 | `CRAWL4AI_MCP_HEADLESS` | Run browser headless |
-| `CRAWL4AI_MCP_PROXY` | Upstream proxy |
+| `CRAWL4AI_MCP_PROXY` | Upstream proxy, supports `http://`, `https://`, `socks5://`, `host:port`, and `port-only` |
 | `CRAWL4AI_MCP_COOKIES_JSON` | Playwright storage state JSON |
 | `CRAWL4AI_MCP_USE_PERSISTENT_CONTEXT` | Reuse browser profile |
 | `CRAWL4AI_MCP_USER_DATA_DIR` | Profile directory |
+| `CRAWL4AI_MCP_NAVIGATION_TIMEOUT_MS` | Default max single navigation wait, default `30000` |
+| `CRAWL4AI_MCP_WAIT_UNTIL` | Default page readiness strategy, default `load` |
 | `OPENAI_BASE_URL` | OpenAI-compatible base URL |
 | `OPENAI_API_KEY` | API key |
 | `OPENAI_MODEL` | Model name |
@@ -218,6 +236,10 @@ CRAWL4AI_MCP_SMOKE_DIR=./_golden_outputs .venv/bin/python -m crawl4ai_mcp.smoke_
 ```
 
 This writes full markdown outputs to `_golden_outputs/` so you can inspect extraction quality page by page.
+
+The golden set now includes the earlier baseline URLs plus `ainew.me`, `openclaw`, `watcha`, `producthunt`, `mydrivers`, `caihongtu`, `openrouter`, and mobile Douban. For sites outside mainland China, proxy-based verification is recommended.
+
+Some overseas sites may still return Cloudflare or similar verification pages even when a proxy is configured. In those cases the server now marks them with `blocked=true`. The recommended path is: better proxy quality, valid cookies, or a persistent browser profile after manual verification.
 
 ---
 

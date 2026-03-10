@@ -19,6 +19,7 @@
 | Tool count | **1** |
 | Tool name | `fetch_urls` |
 | Single URL | pass one URL inside `urls` |
+| LLM default | **off** unless you explicitly pass `use_llm=true` |
 | Output | `title`, `content`, `links`, `blocked`, optional `llm_used` / `llm_error` |
 
 ---
@@ -47,6 +48,9 @@
       "command": "crawl4ai-mcp",
       "env": {
         "CRAWL4AI_MCP_HEADLESS": "true",
+        "CRAWL4AI_MCP_PROXY": "127.0.0.1:7890",
+        "CRAWL4AI_MCP_NAVIGATION_TIMEOUT_MS": "30000",
+        "CRAWL4AI_MCP_WAIT_UNTIL": "load",
 
         "OPENAI_BASE_URL": "https://your-openai-compatible-host",
         "OPENAI_API_KEY": "your-api-key",
@@ -60,6 +64,7 @@
 ### Important
 
 - `OPENAI_BASE_URL` / `OPENAI_API_KEY` / `OPENAI_MODEL` are **optional**.
+- `use_llm` is **off by default**.
 - If they are missing, invalid, or the model call fails, the server **automatically falls back** to non-LLM extraction.
 
 ---
@@ -77,10 +82,12 @@
 
 ## Anti-bot env vars
 
-- `CRAWL4AI_MCP_PROXY`
+- `CRAWL4AI_MCP_PROXY` (`http://...`, `https://...`, `socks5://...`, `127.0.0.1:7890`, or just `7890`)
 - `CRAWL4AI_MCP_COOKIES_JSON`
 - `CRAWL4AI_MCP_USE_PERSISTENT_CONTEXT=true`
 - `CRAWL4AI_MCP_USER_DATA_DIR=/path/to/profile`
+- `CRAWL4AI_MCP_NAVIGATION_TIMEOUT_MS=30000`
+- `CRAWL4AI_MCP_WAIT_UNTIL=load`
 
 ---
 
