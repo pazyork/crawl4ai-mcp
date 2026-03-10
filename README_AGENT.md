@@ -26,15 +26,26 @@
 
 ## Installation Steps
 
-### Step 1: Ask User About Environment
+### Step 1: Detect Environment
 
-**You should ask the user:**
+**You should automatically detect:**
 
-> I'll help you install crawl4ai-mcp. First, let me understand your environment:
-> 
-> 1. Do you have Python 3.9+ installed? (Check with `python3 --version`)
-> 2. Do you prefer conda or venv for Python environments?
-> 3. Where is your MCP config file located? (Usually `~/Library/Application Support/Claude/claude_desktop_config.json` on macOS)
+```bash
+# Check Python version
+python3 --version
+
+# Detect OS
+uname -s  # Darwin (macOS), Linux, or check for Windows
+
+# Find MCP config location
+# macOS: ~/Library/Application Support/Claude/claude_desktop_config.json
+# Linux: ~/.config/Claude/claude_desktop_config.json
+# Windows: %APPDATA%\Claude\claude_desktop_config.json
+```
+
+**Only ask user if:**
+- Python < 3.9 or not found → "Please install Python 3.9+"
+- Multiple Python environments detected → "I found both conda and venv. Which do you prefer?"
 
 ### Step 2: Clone and Install
 
@@ -45,6 +56,17 @@
 git clone https://github.com/pazyork/crawl4ai-mcp.git
 cd crawl4ai-mcp
 
+# For users in China: Use GitHub mirror if needed
+# Option 1: Use ghproxy.com mirror
+git clone https://ghproxy.com/https://github.com/pazyork/crawl4ai-mcp.git
+
+# Option 2: Use gitclone.com mirror
+git clone https://gitclone.com/github.com/pazyork/crawl4ai-mcp.git
+
+# Option 3: Configure git to use proxy
+git config --global http.proxy http://127.0.0.1:7890
+git config --global https.proxy http://127.0.0.1:7890
+
 # Option A: Using conda
 conda env create -f environment.yml
 conda activate crawl4ai-mcp
@@ -54,9 +76,31 @@ python3 -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 pip install -e '.[dev]'
 
+# For users in China: Use pip mirror for faster installation
+pip install -e '.[dev]' -i https://pypi.tuna.tsinghua.edu.cn/simple
+
 # Install Playwright browsers (REQUIRED)
 python -m playwright install chromium
+
+# For users in China: Set Playwright mirror
+export PLAYWRIGHT_DOWNLOAD_HOST=https://npmmirror.com/mirrors/playwright/
+python -m playwright install chromium
 ```
+
+**China-specific acceleration tips:**
+
+1. **GitHub Clone Acceleration:**
+   - Use `ghproxy.com` or `gitclone.com` mirrors
+   - Or configure git proxy: `git config --global http.proxy http://127.0.0.1:7890`
+
+2. **pip Installation Acceleration:**
+   - Tsinghua mirror: `-i https://pypi.tuna.tsinghua.edu.cn/simple`
+   - Aliyun mirror: `-i https://mirrors.aliyun.com/pypi/simple/`
+   - USTC mirror: `-i https://pypi.mirrors.ustc.edu.cn/simple/`
+
+3. **Playwright Browser Download Acceleration:**
+   - Set mirror: `export PLAYWRIGHT_DOWNLOAD_HOST=https://npmmirror.com/mirrors/playwright/`
+   - Or use Taobao mirror: `export PLAYWRIGHT_DOWNLOAD_HOST=https://registry.npmmirror.com/-/binary/playwright/`
 
 ### Step 3: Verify Installation
 
@@ -82,17 +126,26 @@ python tests/functional_test.py
 
 ## Configuration Guide
 
-### Step 4: Ask User About Configuration Needs
+### Step 4: Detect Configuration Needs
 
-**You should ask:**
+**You should automatically detect:**
 
-> Now let's configure crawl4ai-mcp. Please tell me:
-> 
-> 1. **Proxy**: Do you need to access overseas websites? If yes, what's your proxy address? (e.g., `127.0.0.1:7890`)
-> 2. **LLM Enhancement**: Do you want optional LLM-based content cleanup?
->    - If yes, provide: `OPENAI_BASE_URL`, `OPENAI_API_KEY`, `OPENAI_MODEL`
->    - If no, skip this (non-LLM mode works great!)
-> 3. **Timeout**: Do you need longer timeouts for slow websites? (default: 30s)
+```bash
+# Check if proxy is needed (detect if user is in China or accessing overseas sites)
+curl -s --max-time 3 https://www.google.com > /dev/null && echo "Direct access OK" || echo "May need proxy"
+
+# Check for existing proxy settings
+env | grep -i proxy
+
+# Check for OpenAI credentials
+env | grep OPENAI
+```
+
+**Only ask user for:**
+- **Proxy address** if detection shows it's needed: "I detected you may need a proxy for overseas websites. What's your proxy address? (e.g., `127.0.0.1:7890`, or press Enter to skip)"
+- **LLM credentials** only if user explicitly wants LLM mode: "Do you want optional LLM-based content cleanup? (y/N)"
+
+**Default to minimal config** - don't ask unnecessary questions.
 
 ### Step 5: Generate MCP Config
 
