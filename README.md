@@ -80,7 +80,7 @@ Most generic “web fetch” tools either fail on JS-heavy pages or return too m
 | Extraction | Crawl4AI markdown/html extraction |
 | Fallback | Fast path → stronger path when content is too thin |
 | Cleanup | Remove obvious noise, compress blanks, strip data-image placeholders |
-| Site tuning | Zhihu / WeChat / Medium / CSDN / Claude Docs rules |
+| Site tuning | Medium / Claude Docs / GitHub and other mainstream sites |
 | Block detection | `blocked=true` for likely verification/interstitial output |
 | Batch control | Bounded concurrency via `concurrency` |
 

@@ -249,7 +249,7 @@ notepad %APPDATA%\Claude\claude_desktop_config.json
 **If user configured LLM:**
 
 > Test LLM mode:
-> "Fetch https://zhuanlan.zhihu.com/p/1947787094299746426 with use_llm=true and llm_instruction='keep only the main article content, remove navigation and ads'"
+> "Fetch https://example.com with use_llm=true and llm_instruction='keep only the main content, remove navigation and ads'"
 
 ---
 

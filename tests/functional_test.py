@@ -11,34 +11,12 @@ from crawl4ai_mcp.crawler import CrawlService, FetchOptions
 
 TEST_CASES = [
     {
-        "name": "非LLM模式 - 知乎专栏",
-        "url": "https://zhuanlan.zhihu.com/p/1947787094299746426",
+        "name": "Basic fetch - example.com",
+        "url": "https://example.com",
         "use_llm": False,
         "llm_instruction": None,
         "expected": {
-            "min_length": 5000,
-            "llm_used": False,
-            "has_title": True,
-        },
-    },
-    {
-        "name": "非LLM模式 - 知乎个人页",
-        "url": "https://www.zhihu.com/people/phppan",
-        "use_llm": False,
-        "llm_instruction": None,
-        "expected": {
-            "min_length": 1000,
-            "llm_used": False,
-            "has_title": True,
-        },
-    },
-    {
-        "name": "非LLM模式 - 微信公众号",
-        "url": "https://mp.weixin.qq.com/s/vdI4M1Ly8XTnJ6PqpQcEaA",
-        "use_llm": False,
-        "llm_instruction": None,
-        "expected": {
-            "min_length": 3000,
+            "min_length": 100,
             "llm_used": False,
             "has_title": True,
         },

@@ -55,39 +55,6 @@ def _scroll_js(max_steps: int, step_wait_ms: int) -> str:
 
 def _domain_overrides(url: str) -> dict[str, Any]:
     host = urlparse(url).netloc.lower()
-    if "ainew.me" in host:
-        return {
-            "wait_for_fast": "css:main",
-            "wait_for_hard": (
-                "js:() => document.querySelectorAll(\"a[href^='/articles/']\").length >= 8"
-            ),
-            "page_timeout": 30_000,
-            "css_selector_hard": "main",
-            "wait_until": "networkidle",
-            "wait_for_images": True,
-            "delay_before_return_html": 1.5,
-        }
-    if "mp.weixin.qq.com" in host:
-        return {
-            "wait_for_fast": "body",
-            "wait_for_hard": "body",
-            "page_timeout": 90_000,
-            "css_selector_hard": "#js_content",
-        }
-    if "zhuanlan.zhihu.com" in host:
-        return {
-            "wait_for_fast": "css:article",
-            "wait_for_hard": "css:article",
-            "page_timeout": 70_000,
-            "css_selector_hard": "article",
-        }
-    if host == "www.zhihu.com":
-        return {
-            "wait_for_fast": "css:main",
-            "wait_for_hard": "css:main",
-            "page_timeout": 80_000,
-            "css_selector_hard": "main",
-        }
     if "medium.com" in host:
         return {
             "wait_for_fast": "css:article",
@@ -101,13 +68,6 @@ def _domain_overrides(url: str) -> dict[str, Any]:
             "wait_for_hard": "body",
             "page_timeout": 80_000,
             "css_selector_hard": "#content-area",
-        }
-    if "csdn.net" in host:
-        return {
-            "wait_for_fast": "css:#content_views",
-            "wait_for_hard": "css:#content_views",
-            "page_timeout": 70_000,
-            "css_selector_hard": "#content_views",
         }
     if "producthunt.com" in host:
         return {
@@ -123,13 +83,6 @@ def _domain_overrides(url: str) -> dict[str, Any]:
             "wait_for_fast": "body",
             "wait_for_hard": "body",
             "page_timeout": 50_000,
-        }
-    if "watcha.cn" in host or "douban.com" in host:
-        return {
-            "wait_for_fast": "body",
-            "wait_for_hard": "body",
-            "page_timeout": 50_000,
-            "wait_until": "networkidle",
         }
     return {}
 
@@ -261,7 +214,7 @@ def _need_stronger_attempt(url: str, content: str) -> bool:
     host = urlparse(url).netloc.lower()
     if not content.strip():
         return True
-    hard_hosts = ("zhihu.com", "mp.weixin.qq.com", "medium.com", "csdn.net", "code.claude.com")
+    hard_hosts = ("medium.com", "code.claude.com", "github.com")
     if any(x in host for x in hard_hosts):
         return len(content.strip()) < 800
     return False
@@ -342,19 +295,6 @@ def _clean_medium_markdown(md: str) -> str:
     return "\n".join(out)
 
 
-def _clean_csdn_markdown(md: str) -> str:
-    out: list[str] = []
-    for line in md.splitlines():
-        if "一键获取完整项目代码markdown" in line:
-            continue
-        if "csdnimg.cn" in line and "icon-arrowblack" in line:
-            continue
-        if re.match(r"^\s*[*-]\s*\d+\s*$", line):
-            continue
-        out.append(line)
-    return "\n".join(out)
-
-
 def _remove_markdown_links_to_domain(md: str, domain: str) -> str:
     pattern = rf"\[([^\]]*)\]\(https?://{re.escape(domain)}/[^)]+\)"
 
@@ -363,23 +303,6 @@ def _remove_markdown_links_to_domain(md: str, domain: str) -> str:
         return txt if txt.strip() else ""
 
     return re.sub(pattern, repl, md)
-
-
-def _clean_zhihu_article_markdown(md: str) -> str:
-    md = _remove_markdown_links_to_domain(md, "zhida.zhihu.com")
-    out: list[str] = []
-    for line in md.splitlines():
-        s = line.strip()
-        if s.startswith("编辑于 "):
-            continue
-        if s in {"分享", "申请转载", "申请转载​", "​分享"}:
-            continue
-        if "赞同" in s and ("评论" in s or "收藏" in s):
-            continue
-        if s.startswith("[") and "www.zhihu.com/topic/" in s:
-            continue
-        out.append(line)
-    return "\n".join(out)
 
 
 def _extract_image_urls_from_html(html: str) -> list[str]:
@@ -405,16 +328,6 @@ def _extract_image_urls_from_html(html: str) -> list[str]:
         seen.add(u)
         out.append(u)
     return out
-
-
-def _clean_zhihu_profile_markdown(md: str) -> str:
-    out: list[str] = []
-    for line in md.splitlines():
-        s = line.strip()
-        if s.startswith("IP 属地"):
-            continue
-        out.append(line)
-    return "\n".join(out)
 
 
 def _squeeze_blank_lines(md: str) -> str:
@@ -672,18 +585,6 @@ class CrawlService:
             content = _remove_data_image_lines(content)
             if "medium.com" in host:
                 content = _clean_medium_markdown(content)
-            if "csdn.net" in host:
-                content = _clean_csdn_markdown(content)
-            if host == "www.zhihu.com":
-                content = _clean_zhihu_profile_markdown(content)
-            if "zhuanlan.zhihu.com" in host:
-                content = _clean_zhihu_article_markdown(content)
-
-            if "mp.weixin.qq.com" in host and html:
-                imgs = _extract_image_urls_from_html(html)
-                if imgs:
-                    lines = ["", "## Images", *[f"- {u}" for u in imgs]]
-                    content = content.rstrip() + "\n" + "\n".join(lines)
             content = _squeeze_blank_lines(content)
 
         if options.max_chars > 0 and len(content) > options.max_chars:

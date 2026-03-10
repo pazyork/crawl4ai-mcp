@@ -80,7 +80,7 @@ flowchart LR
 | 抽取引擎 | Crawl4AI markdown/html 提取 |
 | 回退策略 | 快速路径 → 内容过薄时走强力路径 |
 | 文本清洗 | 压缩空行、去明显噪音、去 data:image 占位图 |
-| 站点规则 | Zhihu / 微信公众号 / Medium / CSDN / Claude Docs |
+| 站点规则 | Medium / Claude Docs / GitHub 等主流网站 |
 | blocked 标记 | 命中验证页 / interstitial / denied 特征时置 `blocked=true` |
 | 并发抓取 | `concurrency` 控制并发上限 |
 | 默认最长单次等待 | **30s**，可通过环境变量配置 |
@@ -240,7 +240,7 @@ CRAWL4AI_MCP_SMOKE_DIR=./_golden_outputs .venv/bin/python -m crawl4ai_mcp.smoke_
 
 它会把完整 Markdown 落到 `_golden_outputs/`，方便你逐页人工审查提取效果。
 
-当前金标准已覆盖：知乎专栏、知乎个人页、微信公众号、Claude Docs、Medium、CSDN、`ainew.me`、`openclaw` 仓库与 releases、`watcha.cn` 排行页。
+当前金标准已覆盖：Medium、Claude Docs、GitHub、OpenRouter、ProductHunt 等主流技术网站。
 
 ---
 
