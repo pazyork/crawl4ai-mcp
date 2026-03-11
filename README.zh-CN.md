@@ -28,8 +28,9 @@
 
 | 项目项 | 当前仓库里的真实情况 |
 |---|---|
-| MCP 工具 | **只有 1 个**：`fetch_urls` |
+| MCP 工具 | **2 个**：`fetch_urls` + `search_web` |
 | 抓单页 | 统一传 `urls: ["https://example.com"]` |
+| 搜索 | `search_web(query="...", engine="auto")` 自动降级 |
 | 输出 | `title + content + links + blocked + llm_used/llm_error` |
 | 非 LLM 模式 | 默认可用，不依赖模型 |
 | LLM 模式 | **默认关闭**，只有 `use_llm=true` 才会做二次清洗，可带 `llm_instruction` |

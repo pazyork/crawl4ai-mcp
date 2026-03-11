@@ -249,7 +249,16 @@ def parse_search_from_markdown(
     results: list[SearchResult] = []
     link_pattern = re.compile(r"\[([^\]]+)\]\((https?://[^)]+)\)")
     lines = md.splitlines()
-    search_domains = ("google.", "bing.com", "baidu.com", "duckduckgo.com")
+
+    noise_domains = (
+        "google.", "bing.com", "baidu.com", "duckduckgo.com",
+        "gstatic.com", "bcebos.com", "bdstatic.com", "baidustatic.com",
+        "microsoft.com/maps", "go.microsoft.com",
+    )
+    noise_titles = (
+        "登录", "手写", "拼音", "关闭", "百度一下", "上一页", "下一页",
+        "javascript:", "img", "png", "svg", "ico",
+    )
 
     i = 0
     while i < len(lines) and len(results) < max_results:
@@ -258,11 +267,25 @@ def parse_search_from_markdown(
             title = m.group(1).strip()
             url = m.group(2).strip()
             host = urlparse(url).netloc.lower()
-            if not any(d in host for d in search_domains) and len(title) > 5:
+
+            skip = (
+                any(d in host for d in noise_domains)
+                or any(n in title.lower() for n in noise_titles)
+                or len(title) < 6
+                or url.endswith((".png", ".jpg", ".svg", ".ico", ".gif"))
+            )
+
+            if not skip:
                 snippet = ""
                 for j in range(i + 1, min(i + 4, len(lines))):
                     line = lines[j].strip()
-                    if line and not line.startswith("[") and not line.startswith("#"):
+                    if (
+                        line
+                        and not line.startswith("[")
+                        and not line.startswith("#")
+                        and not line.startswith("!")
+                        and len(line) > 20
+                    ):
                         snippet = line[:300]
                         break
                 results.append(SearchResult(title=title, url=url, snippet=snippet))

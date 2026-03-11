@@ -16,11 +16,13 @@
 
 | Item | Value |
 |---|---|
-| Tool count | **1** |
-| Tool name | `fetch_urls` |
+| Tool count | **2** |
+| Tool names | `fetch_urls`, `search_web` |
 | Single URL | `urls: ["https://example.com"]` |
+| Web search | `search_web(query="...", engine="auto")` |
 | LLM default | **off** (enable with `use_llm=true`) |
-| Output | `title`, `content`, `links`, `blocked`, `llm_used`, `llm_error` |
+| Output (fetch) | `title`, `content`, `links`, `blocked`, `llm_used`, `llm_error` |
+| Output (search) | `engine`, `query`, `results[{title, url, snippet}]`, `total` |
 
 ---
 
@@ -373,6 +375,29 @@ python -m playwright install chromium
   "urls": ["https://example.com"],
   "format": "html",
   "max_chars": 200000
+}
+```
+
+### Web Search (auto fallback)
+
+```json
+{
+  "query": "latest AI agent frameworks",
+  "engine": "auto",
+  "max_results": 10
+}
+```
+
+When `engine="auto"`, tries: DuckDuckGo → Bing → Google → Baidu.
+
+### Web Search (specific engine)
+
+```json
+{
+  "query": "crawl4ai tutorial",
+  "engine": "google",
+  "max_results": 5,
+  "lang": "en"
 }
 ```
 

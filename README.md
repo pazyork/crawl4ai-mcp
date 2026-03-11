@@ -28,8 +28,9 @@ It renders real pages with Playwright + Crawl4AI, returns **main-content-first M
 
 | Item | Reality in this repo |
 |---|---|
-| MCP tools | **1 tool only**: `fetch_urls` |
+| MCP tools | **2 tools**: `fetch_urls` + `search_web` |
 | Single-page fetch | Use `urls: ["https://example.com"]` |
+| Web search | `search_web(query="...", engine="auto")` with automatic fallback |
 | Output | `title + content + links + blocked + llm_used/llm_error` |
 | Non-LLM mode | First-class, default, usable without any model |
 | LLM mode | **Off by default**. Enabled only with `use_llm=true` + optional `llm_instruction` |
@@ -99,7 +100,7 @@ Most generic “web fetch” tools either fail on JS-heavy pages or return too m
 
 ---
 
-## The only MCP tool
+## MCP Tools
 
 ### `fetch_urls`
 
@@ -129,6 +130,36 @@ Use a single-element list if you only need one page.
 | `blocked` | Likely anti-bot / verification / denied result |
 | `llm_used` | Whether LLM enhancement was actually applied |
 | `llm_error` | Why the LLM step degraded |
+
+### `search_web`
+
+```json
+{
+  "query": "crawl4ai web scraping",
+  "engine": "auto",
+  "max_results": 10,
+  "lang": ""
+}
+```
+
+| Parameter | Default | Description |
+|---|---|---|
+| `query` | (required) | Search query string |
+| `engine` | `auto` | Engine to use: `auto`, `google`, `bing`, `duckduckgo`, `baidu` |
+| `max_results` | `10` | Maximum number of results |
+| `lang` | `""` | Language hint (e.g. `en`, `zh-CN`) |
+
+When `engine="auto"`, the server tries engines in fallback order: DuckDuckGo → Bing → Google → Baidu. The first engine that returns results wins.
+
+#### Search return shape
+
+| Field | Meaning |
+|---|---|
+| `engine` | Which engine actually returned results |
+| `query` | Original query |
+| `results` | List of `{title, url, snippet}` |
+| `total` | Number of results |
+| `fallback_engines_tried` | Engines that failed before the successful one |
 
 ---
 
