@@ -613,88 +613,17 @@ class CrawlService:
         max_results: int = 10,
         lang: str = "",
     ) -> dict[str, object]:
-        if self._crawler is None:
-            raise RuntimeError("Crawler not started")
+        from .searcher import search_with_fallback
 
-        if engine == "auto":
-            from .searcher import FALLBACK_ORDER
-            engines = list(FALLBACK_ORDER)
-        else:
-            engines = [engine]
-
-        fallback_tried: list[str] = []
-        last_error = ""
-
-        for eng in engines:
-            try:
-                return await self._search_single(
-                    query=query,
-                    engine=eng,
-                    max_results=max_results,
-                    lang=lang,
-                    fallback_tried=fallback_tried,
-                )
-            except Exception as e:
-                fallback_tried.append(eng)
-                last_error = f"{eng}: {e}"
-
-        raise RuntimeError(f"All search engines failed. Last: {last_error}")
-
-    async def _search_single(
-        self,
-        *,
-        query: str,
-        engine: str,
-        max_results: int,
-        lang: str,
-        fallback_tried: list[str],
-    ) -> dict[str, object]:
-        from .searcher import (
-            build_search_url,
-            parse_search_from_markdown,
-            parse_search_results,
+        proxy = _normalize_proxy_url(self._settings.proxy) if self._settings.proxy else None
+        response = await search_with_fallback(
+            query=query,
+            engine=engine,
+            max_results=max_results,
+            lang=lang,
+            proxy=proxy,
         )
-
-        url = build_search_url(engine, query, num=max_results, lang=lang)
-
-        cfg = CrawlerRunConfig(
-            cache_mode=CacheMode.BYPASS,
-            stream=False,
-            wait_until="domcontentloaded",
-            page_timeout=30_000,
-            override_navigator=True,
-            delay_before_return_html=max(1.5, self._settings.page_wait_ms / 1000.0),
-            mean_delay=max(0.0, float(self._settings.mean_delay_s)),
-            max_range=max(0.0, float(self._settings.max_delay_jitter_s)),
-        )
-
-        res = await self._crawler.arun(url=url, config=cfg)
-        if not getattr(res, "success", False):
-            raise RuntimeError(getattr(res, "error_message", "crawl failed"))
-
-        page = getattr(res, "_page", None) or getattr(res, "page", None)
-        if page is not None:
-            sr = await parse_search_results(page, engine, query, max_results)
-            if sr.results:
-                d = sr.to_dict()
-                if fallback_tried:
-                    d["fallback_engines_tried"] = fallback_tried
-                return d
-
-        md = getattr(res, "markdown_v2", None)
-        if md is None:
-            md = getattr(res, "markdown", "") or ""
-        else:
-            md = getattr(md, "raw_markdown", "") or str(md)
-
-        sr = parse_search_from_markdown(str(md), engine, query, max_results)
-        if not sr.results:
-            raise RuntimeError(f"No results parsed from {engine}")
-
-        d = sr.to_dict()
-        if fallback_tried:
-            d["fallback_engines_tried"] = fallback_tried
-        return d
+        return response.to_dict()
 
 
 async def fetch_many(
