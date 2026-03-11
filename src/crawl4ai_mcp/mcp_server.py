@@ -9,7 +9,6 @@ from mcp.server.fastmcp import Context, FastMCP
 from .config import get_settings
 from .crawler import CrawlService, FetchOptions, fetch_many
 from .openai_client import load_openai_config, openai_chat_completions_json
-from .searcher import SUPPORTED_ENGINES
 
 
 @asynccontextmanager
