@@ -615,6 +615,12 @@ class CrawlService:
     ) -> dict[str, object]:
         from .searcher import search_with_fallback
 
+        # Validate parameters
+        if not query or not query.strip():
+            raise ValueError("query must not be empty")
+        if max_results < 1 or max_results > 100:
+            raise ValueError("max_results must be between 1 and 100")
+
         proxy = _normalize_proxy_url(self._settings.proxy) if self._settings.proxy else None
         response = await search_with_fallback(
             query=query,

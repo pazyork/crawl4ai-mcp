@@ -138,13 +138,20 @@ async def search_web(
     max_results: int = 10,
     lang: str = "",
 ) -> dict[str, Any]:
-    service = ctx.request_context.lifespan_context["service"]
-    return await service.search(
-        query=query,
-        engine=engine,
-        max_results=max_results,
-        lang=lang,
-    )
+    try:
+        service = ctx.request_context.lifespan_context["service"]
+        return await service.search(
+            query=query,
+            engine=engine,
+            max_results=max_results,
+            lang=lang,
+        )
+    except Exception as e:
+        return {
+            "error": str(e)[:500],
+            "engine": engine if 'engine' in locals() else "unknown",
+            "query": query[:100] if 'query' in locals() else "unknown",
+        }
 
 
 def run_stdio() -> None:
