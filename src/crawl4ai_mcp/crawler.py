@@ -628,6 +628,7 @@ class CrawlService:
             max_results=max_results,
             lang=lang,
             proxy=proxy,
+            fusion_count=2,  # Try first 2 engines in parallel for fusion
         )
         return response.to_dict()
 

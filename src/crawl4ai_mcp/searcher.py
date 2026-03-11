@@ -430,13 +430,49 @@ async def search_with_fallback(
     max_results: int,
     lang: str,
     proxy: str | None,
+    fusion_count: int = 2,
 ) -> SearchResponse:
     plan = resolve_engine_plan(engine, query, lang)
     aggregate: list[SearchResult] = []
     engines_used: list[str] = []
     errors: list[str] = []
 
-    for name in plan:
+    # Fusion mode: try first N engines in parallel
+    if fusion_count > 1:
+        import asyncio
+        fusion_plan = plan[:fusion_count]
+        tasks = [
+            fetch_engine_results(
+                engine=name,
+                query=query,
+                max_results=max_results,
+                lang=lang,
+                proxy=proxy,
+            )
+            for name in fusion_plan
+        ]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        for name, result in zip(fusion_plan, results):
+            if isinstance(result, Exception):
+                errors.append(f"{name}: {result}")
+            else:
+                if result:
+                    engines_used.append(name)
+                    aggregate.extend(result)
+
+        # If fusion got enough results, return
+        if len(aggregate) >= max_results:
+            return SearchResponse(
+                engine="fused",
+                query=query,
+                results=deduplicate(aggregate)[:max_results],
+                engines_used=engines_used,
+            )
+
+    # Fallback mode: try remaining engines one by one
+    start_idx = fusion_count if fusion_count > 1 else 0
+    for name in plan[start_idx:]:
         try:
             items = await fetch_engine_results(
                 engine=name,
@@ -460,7 +496,7 @@ async def search_with_fallback(
         raise RuntimeError(f"All engines failed: {'; '.join(errors)}")
 
     return SearchResponse(
-        engine="aggregated" if len(engines_used) > 1 else engines_used[0],
+        engine="fused" if len(engines_used) > 1 else engines_used[0],
         query=query,
         results=aggregate[:max_results],
         engines_used=engines_used,
