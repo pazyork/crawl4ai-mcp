@@ -60,6 +60,76 @@ flowchart LR
 
 ---
 
+## 安装
+
+### 快速安装（推荐）
+
+**步骤 1：创建虚拟环境**
+
+```bash
+# macOS/Linux - 使用系统 Python 3 (3.10-3.13)
+python3 -m venv crawl4ai
+source crawl4ai/bin/activate
+
+# Windows
+python -m venv crawl4ai
+crawl4ai\Scripts\activate
+```
+
+**步骤 2：安装**
+
+```bash
+pip install --upgrade pip
+pip install crawl4agent
+playwright install chromium
+```
+
+### 其他安装方式
+
+**如果 `python3` 版本太老（3.9 或以下）：**
+```bash
+# 使用特定 Python 版本（3.10/3.11/3.12/3.13）
+python3.12 -m venv crawl4ai
+source crawl4ai/bin/activate
+pip install crawl4agent
+```
+
+**使用 conda：**
+```bash
+conda create -n crawl4ai python=3.12
+conda activate crawl4ai
+pip install crawl4agent
+playwright install chromium
+```
+
+**使用 pipx（全局命令）：**
+```bash
+pipx install crawl4agent
+crawl4ai-mcp --help
+```
+
+### 故障排查
+
+**问题："pip install" 用的是 Python 2.7**
+```bash
+# macOS：显式使用 python3
+python3 -m pip install crawl4agent
+
+# 或者检查 pip 版本
+which pip
+pip --version
+```
+
+**问题："No matching distribution found for crawl4agent"**
+- 检查 Python 版本：`python3 --version`（必须是 3.10-3.13）
+- 升级 pip：`python3 -m pip install --upgrade pip`
+
+**问题："playwright install" 失败**
+- 使用镜像（中国）：`export PLAYWRIGHT_DOWNLOAD_HOST=https://npmmirror.com/mirrors/playwright/`
+- 然后：`python3 -m playwright install chromium`
+
+---
+
 ## 为什么做这个
 
 很多网页抓取工具的问题是：**JS-heavy 页面抓不稳，或者抓出来全是导航、登录、广告、推荐流**。这个项目更关注四件事：

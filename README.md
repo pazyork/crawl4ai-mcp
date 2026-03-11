@@ -79,6 +79,76 @@ flowchart LR
 
 ---
 
+## Installation
+
+### Quick install (recommended)
+
+**Step 1: Create a virtual environment**
+
+```bash
+# macOS/Linux - using system Python 3 (3.10-3.13)
+python3 -m venv crawl4ai
+source crawl4ai/bin/activate
+
+# Windows
+python -m venv crawl4ai
+crawl4ai\Scripts\activate
+```
+
+**Step 2: Install**
+
+```bash
+pip install --upgrade pip
+pip install crawl4agent
+playwright install chromium
+```
+
+### Alternative methods
+
+**If `python3` is too old (3.9 or below):**
+```bash
+# Use specific Python version (3.10, 3.11, 3.12, or 3.13)
+python3.12 -m venv crawl4ai
+source crawl4ai/bin/activate
+pip install crawl4agent
+```
+
+**Using conda:**
+```bash
+conda create -n crawl4ai python=3.12
+conda activate crawl4ai
+pip install crawl4agent
+playwright install chromium
+```
+
+**Using pipx (global command):**
+```bash
+pipx install crawl4agent
+crawl4ai-mcp --help
+```
+
+### Troubleshooting
+
+**Problem: "pip install" uses Python 2.7**
+```bash
+# macOS: use python3 explicitly
+python3 -m pip install crawl4agent
+
+# Or check which pip you're using
+which pip
+pip --version
+```
+
+**Problem: "No matching distribution found for crawl4agent"**
+- Check Python version: `python3 --version` (must be 3.10-3.13)
+- Upgrade pip: `python3 -m pip install --upgrade pip`
+
+**Problem: "playwright install" fails**
+- Use mirror (China): `export PLAYWRIGHT_DOWNLOAD_HOST=https://npmmirror.com/mirrors/playwright/`
+- Then: `python3 -m playwright install chromium`
+
+---
+
 ## Why this project exists
 
 Most generic “web fetch” tools either fail on JS-heavy pages or return too much boilerplate. This project focuses on four things:
