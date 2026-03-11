@@ -79,7 +79,32 @@ async def _maybe_llm_clean(
     return out
 
 
-@mcp.tool(description="Fetch multiple URLs with bounded concurrency")
+@mcp.tool(description="""
+Fetch and extract content from multiple URLs with real browser rendering.
+
+Use this when you need to:
+- Scrape webpage content (articles, documentation, blogs)
+- Extract main text while removing navigation/ads
+- Batch fetch multiple pages concurrently
+- Get clean markdown from JS-heavy sites
+
+Recommended config:
+- format: "markdown" (default) - returns clean, readable content
+- concurrency: 3 - optimal for most use cases
+- max_chars: 200000 - enough for long articles
+- use_llm: false (default) - fast without model
+- llm_instruction: only needed when use_llm=true
+
+Example usage:
+{
+  "urls": ["https://example.com/docs", "https://example.com/blog"],
+  "format": "markdown",
+  "concurrency": 3,
+  "max_chars": 200000
+}
+
+Returns: results array with {url, title, content, content_format, links, extracted_at, blocked}
+""")
 async def fetch_urls(
     ctx: Context,
     urls: list[str],
@@ -123,14 +148,46 @@ async def fetch_urls(
     return {"results": results}
 
 
-@mcp.tool(
-    description=(
-        "Search the web using a search engine. "
-        f"Supported engines: {', '.join(SUPPORTED_ENGINES)}. "
-        "Use engine='auto' (default) for automatic fallback across engines. "
-        "Returns structured results with title, url, and snippet."
-    )
-)
+@mcp.tool(description="""
+Search the web across 7 search engines with intelligent fusion and fallback.
+
+Use this when you need to:
+- Find relevant pages on the internet
+- Search for documentation, tutorials, news
+- Get aggregated results from multiple search engines
+- Research a topic with comprehensive coverage
+
+Search engines (in order):
+- International: DuckDuckGo → Bing → Google → Yandex
+- Chinese: Sogou → 360Search → Baidu → Bing
+
+Recommended config:
+- engine: "auto" (default) - uses fusion mode (DuckDuckGo + Bing in parallel)
+- max_results: 8-10 - optimal for most research tasks
+- lang: "en" or "zh-CN" - auto-detects Chinese queries
+
+Engine selection logic:
+- engine="auto" + English query → DuckDuckGo + Bing → fallback to Google
+- engine="auto" + Chinese query → Sogou + 360Search → fallback to Baidu
+- engine="google" → use Google only (no fallback)
+- engine="duckduckgo" → use DuckDuckGo only
+
+Fusion mode (engine="auto"):
+- Queries top 2 engines simultaneously
+- Aggregates and deduplicates results
+- Falls back to sequential search if needed
+- Returns engine="fused" when using multiple sources
+
+Example usage:
+{
+  "query": "Python web scraping best practices",
+  "engine": "auto",
+  "max_results": 10,
+  "lang": "en"
+}
+
+Returns: {engine, query, results: [{title, url, snippet, engine}], total, engines_used}
+""")
 async def search_web(
     ctx: Context,
     query: str,
