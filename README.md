@@ -3,15 +3,16 @@
 <div align="center">
 
 [![License: AGPL v3](https://img.shields.io/badge/license-AGPL--3.0--or--later-6f42c1)](https://www.gnu.org/licenses/agpl-3.0)
-[![Python](https://img.shields.io/badge/python-3.9--3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/downloads/)
+[![Python](https://img.shields.io/badge/python-3.10--3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/downloads/)
 [![MCP](https://img.shields.io/badge/protocol-MCP-0A7EA4)](https://modelcontextprotocol.io)
 [![Playwright](https://img.shields.io/badge/browser-Playwright-2EAD33?logo=playwright&logoColor=white)](https://playwright.dev)
 [![Crawl4AI](https://img.shields.io/badge/extractor-Crawl4AI-111827)](https://github.com/unclecode/crawl4ai)
+[![PyPI](https://img.shields.io/pypi/v/crawl4agent)](https://pypi.org/project/crawl4agent/)
 [![GitHub stars](https://img.shields.io/github/stars/pazyork/crawl4ai-mcp?style=social)](https://github.com/pazyork/crawl4ai-mcp)
 
-**A minimal MCP server for agent-friendly web extraction.**
+**A minimal MCP server for agent-friendly web extraction and search.**
 
-It renders real pages with Playwright + Crawl4AI, returns **main-content-first Markdown**, supports **batch fetching only**, and can optionally apply **OpenAI-compatible cleanup** with a custom instruction.
+Two tools: fetch real pages with Playwright + Crawl4AI, or search across 7 engines with automatic fallback.
 
 </div>
 
@@ -29,8 +30,9 @@ It renders real pages with Playwright + Crawl4AI, returns **main-content-first M
 | Item | Reality in this repo |
 |---|---|
 | MCP tools | **2 tools**: `fetch_urls` + `search_web` |
-| Single-page fetch | Use `urls: ["https://example.com"]` |
-| Web search | `search_web(query="...", engine="auto")` with automatic fallback |
+| Single-page fetch | `urls: ["https://example.com"]` |
+| Web search | `search_web(query="...", engine="auto")` — 7 engines, auto fallback |
+| Search engines | DuckDuckGo · Bing · Google · Yandex · Sogou · 360Search · Baidu |
 | Output | `title + content + links + blocked + llm_used/llm_error` |
 | Non-LLM mode | First-class, default, usable without any model |
 | LLM mode | **Off by default**. Enabled only with `use_llm=true` + optional `llm_instruction` |
@@ -42,20 +44,37 @@ It renders real pages with Playwright + Crawl4AI, returns **main-content-first M
 
 ## How it works
 
+**Fetch flow:**
+
 ```mermaid
 flowchart LR
-    A[URL list input] --> B[Playwright and Crawl4AI]
-    B --> C{Fast path enough}
-    C -- Yes --> D[Markdown or HTML result]
+    A[URL list] --> B[Playwright + Crawl4AI]
+    B --> C{Fast path enough?}
+    C -- Yes --> D[Markdown / HTML]
     C -- No --> E[Stronger fallback]
     E --> D
-    D --> F[Site-specific cleanup]
-    F --> G{use_llm enabled}
-    G -- No --> H[Return non-LLM result]
-    G -- Yes --> I[OpenAI-compatible cleanup]
-    I --> J{LLM success}
-    J -- Yes --> K[Return enhanced result]
-    J -- No --> H
+    D --> F{use_llm?}
+    F -- No --> G[Return result]
+    F -- Yes --> H[OpenAI-compatible cleanup]
+    H --> I{LLM success?}
+    I -- Yes --> J[Return enhanced result]
+    I -- No --> G
+```
+
+**Search flow:**
+
+```mermaid
+flowchart LR
+    A[query + engine] --> B{engine=auto?}
+    B -- Yes --> C[Detect language]
+    C --> D[Build engine plan]
+    B -- No --> E[Use specified engine]
+    D --> F[Try engines in order]
+    E --> F
+    F --> G{Results?}
+    G -- Yes --> H[Aggregate + deduplicate]
+    G -- No, next engine --> F
+    H --> I[Return results]
 ```
 
 ---
