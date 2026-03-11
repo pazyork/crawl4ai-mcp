@@ -9,6 +9,7 @@ from mcp.server.fastmcp import Context, FastMCP
 from .config import get_settings
 from .crawler import CrawlService, FetchOptions, fetch_many
 from .openai_client import load_openai_config, openai_chat_completions_json
+from .searcher import SUPPORTED_ENGINES
 
 
 @asynccontextmanager
@@ -120,6 +121,30 @@ async def fetch_urls(
             if isinstance(r, dict) and isinstance(r.get("content"), str):
                 r["content"] = _maybe_truncate(r["content"], max_chars)
     return {"results": results}
+
+
+@mcp.tool(
+    description=(
+        "Search the web using a search engine. "
+        f"Supported engines: {', '.join(SUPPORTED_ENGINES)}. "
+        "Use engine='auto' (default) for automatic fallback across engines. "
+        "Returns structured results with title, url, and snippet."
+    )
+)
+async def search_web(
+    ctx: Context,
+    query: str,
+    engine: str = "auto",
+    max_results: int = 10,
+    lang: str = "",
+) -> dict[str, Any]:
+    service = ctx.request_context.lifespan_context["service"]
+    return await service.search(
+        query=query,
+        engine=engine,
+        max_results=max_results,
+        lang=lang,
+    )
 
 
 def run_stdio() -> None:

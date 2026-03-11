@@ -3,7 +3,7 @@ requires = ["setuptools>=69", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "crawl4ai-mcp"
+name = "crawl4agent"
 version = "0.1.0"
 description = "An MCP server built on crawl4ai for reliable webpage extraction"
 readme = "README.md"
