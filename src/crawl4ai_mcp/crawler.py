@@ -55,6 +55,13 @@ def _scroll_js(max_steps: int, step_wait_ms: int) -> str:
 
 def _domain_overrides(url: str) -> dict[str, Any]:
     host = urlparse(url).netloc.lower()
+    if "chatgpt.com" in host:
+        return {
+            "wait_for_fast": "css:[data-message-author-role]",
+            "wait_for_hard": "css:[data-message-author-role]",
+            "page_timeout": 60_000,
+            "delay_before_return_html": 8.0,
+        }
     if "medium.com" in host:
         return {
             "wait_for_fast": "css:article",
