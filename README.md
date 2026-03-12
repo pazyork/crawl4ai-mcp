@@ -171,6 +171,7 @@ Most generic “web fetch” tools either fail on JS-heavy pages or return too m
 | Fallback | Fast path → stronger path when content is too thin |
 | Cleanup | Remove obvious noise, compress blanks, strip data-image placeholders |
 | Site tuning | Medium / Claude Docs / GitHub and other mainstream sites |
+| ChatGPT shared links | Full conversation extraction from `chatgpt.com/share/...` URLs |
 | Block detection | `blocked=true` for likely verification/interstitial output |
 | Batch control | Bounded concurrency via `concurrency` |
 

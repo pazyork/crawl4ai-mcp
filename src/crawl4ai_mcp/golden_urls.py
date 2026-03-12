@@ -10,4 +10,5 @@ GOLDEN_URLS = [
     "https://openrouter.ai/models?max_price=0.1",
     "https://www.darioamodei.com/essay/the-adolescence-of-technology",
     "https://www.bestblogs.dev/en/article/c5287c22",
+    "https://chatgpt.com/share/69b2282b-5b10-8008-8e11-8f23913457b7",
 ]
