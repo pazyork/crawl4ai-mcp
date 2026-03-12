@@ -79,30 +79,30 @@ async def _maybe_llm_clean(
 
 
 @mcp.tool(description="""
-Fetch and extract content from multiple URLs with real browser rendering.
+Fetch and extract content from one or more URLs with real browser rendering.
 
-Use this when you need to:
-- Scrape webpage content (articles, documentation, blogs)
+When to use:
+- Scrape webpage content (articles, docs, blogs, ChatGPT shared conversations)
 - Extract main text while removing navigation/ads
 - Batch fetch multiple pages concurrently
 - Get clean markdown from JS-heavy sites
 
-Recommended config:
-- format: "markdown" (default) - returns clean, readable content
-- concurrency: 3 - optimal for most use cases
-- max_chars: 200000 - enough for long articles
-- use_llm: false (default) - fast without model
-- llm_instruction: only needed when use_llm=true
+Parameters:
+- urls: list of URLs to fetch (required)
+- format: "markdown" (default) or "html"
+- max_chars: truncate content to this length (default: 200000). Set higher for long pages.
+- concurrency: parallel fetch limit (default: 3)
+- use_llm: enable LLM cleanup (default: false, requires OPENAI_* env vars)
+- llm_instruction: custom instruction for LLM cleanup (only when use_llm=true)
 
-Example usage:
-{
-  "urls": ["https://example.com/docs", "https://example.com/blog"],
-  "format": "markdown",
-  "concurrency": 3,
-  "max_chars": 200000
-}
+Important notes:
+- Some JS-heavy pages (ChatGPT, SPAs) need extra load time — handled automatically
+- Content is truncated at max_chars. If you get incomplete content, increase max_chars
+- If a page times out (default 30s), try again or check if proxy is needed
+- blocked=true means the site returned a verification/CAPTCHA page
+- For overseas sites, configure CRAWL4AI_MCP_PROXY env var
 
-Returns: results array with {url, title, content, content_format, links, extracted_at, blocked}
+Returns per URL: {url, final_url, title, content, content_format, links, extracted_at, blocked}
 """)
 async def fetch_urls(
     ctx: Context,
@@ -150,40 +150,28 @@ async def fetch_urls(
 @mcp.tool(description="""
 Search the web across 7 search engines with intelligent fusion and fallback.
 
-Use this when you need to:
-- Find relevant pages on the internet
-- Search for documentation, tutorials, news
-- Get aggregated results from multiple search engines
-- Research a topic with comprehensive coverage
+When to use:
+- Find relevant pages, documentation, tutorials, news
+- Research a topic with comprehensive multi-engine coverage
+- Get aggregated and deduplicated results from multiple sources
 
-Search engines (in order):
-- International: DuckDuckGo → Bing → Google → Yandex
-- Chinese: Sogou → 360Search → Baidu → Bing
-
-Recommended config:
-- engine: "auto" (default) - uses fusion mode (DuckDuckGo + Bing in parallel)
-- max_results: 8-10 - optimal for most research tasks
-- lang: "en" or "zh-CN" - auto-detects Chinese queries
-
-Engine selection logic:
-- engine="auto" + English query → DuckDuckGo + Bing → fallback to Google
-- engine="auto" + Chinese query → Sogou + 360Search → fallback to Baidu
-- engine="google" → use Google only (no fallback)
-- engine="duckduckgo" → use DuckDuckGo only
+Parameters:
+- query: search query string (required)
+- engine: "auto" (default), "google", "bing", "duckduckgo", "baidu", "sogou", "so360", "yandex"
+- max_results: number of results to return (default: 10, max: 100)
+- lang: language hint, e.g. "en", "zh-CN" (auto-detects Chinese from query text)
 
 Fusion mode (engine="auto"):
-- Queries top 2 engines simultaneously
-- Aggregates and deduplicates results
-- Falls back to sequential search if needed
-- Returns engine="fused" when using multiple sources
+- Queries top 2 engines simultaneously, aggregates and deduplicates
+- English queries: DuckDuckGo + Bing first, then Google, Yandex
+- Chinese queries: Sogou + 360Search first, then Baidu, Bing
+- Returns engine="fused" when multiple sources contribute
 
-Example usage:
-{
-  "query": "Python web scraping best practices",
-  "engine": "auto",
-  "max_results": 10,
-  "lang": "en"
-}
+Important notes:
+- Search may take 5-15s depending on engine availability
+- If all engines fail, returns error with details per engine
+- For overseas engines (Google, DuckDuckGo), proxy may be needed from China
+- Results are deduplicated by URL and fuzzy title matching (85% threshold)
 
 Returns: {engine, query, results: [{title, url, snippet, engine}], total, engines_used}
 """)
