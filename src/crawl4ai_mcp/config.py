@@ -16,6 +16,14 @@ class Settings(BaseSettings):
         default=None,
         description="Playwright storage_state JSON path",
     )
+    ytdlp_cookies_from_browser: Optional[str] = Field(
+        default=None,
+        description="yt-dlp browser cookie source, e.g. chrome, firefox:default",
+    )
+    ytdlp_cookiefile: Optional[str] = Field(
+        default=None,
+        description="yt-dlp Netscape cookies.txt path",
+    )
     use_persistent_context: bool = Field(default=False)
     user_data_dir: Optional[str] = Field(default=None)
 

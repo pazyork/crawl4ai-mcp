@@ -17,6 +17,7 @@ from crawl4ai.cache_context import CacheMode
 
 from .config import Settings
 from .types import build_result_dict
+from .video import extract_video_result
 
 
 @dataclass(frozen=True)
@@ -410,6 +411,16 @@ class CrawlService:
         self._crawler = None
 
     async def fetch(self, *, url: str, options: FetchOptions) -> dict[str, object]:
+        video_result = await _fetch_video_result(
+            url=url,
+            options=options,
+            proxy=_normalize_proxy_url(self._settings.proxy) if self._settings.proxy else None,
+            cookies_from_browser=self._settings.ytdlp_cookies_from_browser,
+            cookiefile=self._settings.ytdlp_cookiefile,
+        )
+        if video_result is not None:
+            return video_result
+
         if self._crawler is None:
             raise RuntimeError("Crawler not started")
 
@@ -657,3 +668,20 @@ async def fetch_many(
                 return {"url": u, "error": str(e)}
 
     return await asyncio.gather(*(one(u) for u in urls))
+
+
+async def _fetch_video_result(
+    *,
+    url: str,
+    options: FetchOptions,
+    proxy: Optional[str],
+    cookies_from_browser: Optional[str],
+    cookiefile: Optional[str],
+) -> dict[str, object] | None:
+    return await extract_video_result(
+        url=url,
+        max_chars=options.max_chars,
+        proxy=proxy,
+        cookies_from_browser=cookies_from_browser,
+        cookiefile=cookiefile,
+    )

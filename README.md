@@ -172,6 +172,7 @@ Most generic “web fetch” tools either fail on JS-heavy pages or return too m
 | Cleanup | Remove obvious noise, compress blanks, strip data-image placeholders |
 | Site tuning | Medium / Claude Docs / GitHub and other mainstream sites |
 | ChatGPT shared links | Full conversation extraction from `chatgpt.com/share/...` URLs |
+| Video transcripts | YouTube / Bilibili URLs prefer subtitle extraction via `yt-dlp`, then fall back to webpage extraction |
 | Block detection | `blocked=true` for likely verification/interstitial output |
 | Batch control | Bounded concurrency via `concurrency` |
 
@@ -207,6 +208,8 @@ Most generic “web fetch” tools either fail on JS-heavy pages or return too m
 
 Use a single-element list if you only need one page.
 
+For supported video URLs (`youtube.com`, `youtu.be`, `bilibili.com`, `b23.tv`), `fetch_urls` prefers transcript extraction and returns readable markdown built from subtitles when available.
+
 ### Return shape
 
 | Field | Meaning |
@@ -217,6 +220,7 @@ Use a single-element list if you only need one page.
 | `content` | Markdown or HTML |
 | `content_format` | `markdown` or `html` |
 | `links` | Normalized extracted links |
+| `video_metadata` | Present for supported video transcript extraction results |
 | `blocked` | Likely anti-bot / verification / denied result |
 | `llm_used` | Whether LLM enhancement was actually applied |
 | `llm_error` | Why the LLM step degraded |
@@ -343,6 +347,8 @@ LLM-related env vars are **optional**. `use_llm` is still **off by default** at 
 | `CRAWL4AI_MCP_HEADLESS` | Run browser headless |
 | `CRAWL4AI_MCP_PROXY` | Upstream proxy, supports `http://`, `https://`, `socks5://`, `host:port`, and `port-only` |
 | `CRAWL4AI_MCP_COOKIES_JSON` | Playwright storage state JSON |
+| `CRAWL4AI_MCP_YTDLP_COOKIES_FROM_BROWSER` | Browser cookies source for video transcript extraction, e.g. `chrome`, `firefox:default` |
+| `CRAWL4AI_MCP_YTDLP_COOKIEFILE` | Netscape cookies.txt path for `yt-dlp` video transcript extraction |
 | `CRAWL4AI_MCP_USE_PERSISTENT_CONTEXT` | Reuse browser profile |
 | `CRAWL4AI_MCP_USER_DATA_DIR` | Profile directory |
 | `CRAWL4AI_MCP_NAVIGATION_TIMEOUT_MS` | Default max single navigation wait, default `30000` |
@@ -359,11 +365,21 @@ LLM-related env vars are **optional**. `use_llm` is still **off by default** at 
 CRAWL4AI_MCP_SMOKE_DIR=./_golden_outputs .venv/bin/python -m crawl4ai_mcp.smoke_golden
 ```
 
+For overseas video URLs, a local proxy is often needed:
+
+```bash
+CRAWL4AI_MCP_PROXY=http://127.0.0.1:7890 \
+CRAWL4AI_MCP_SMOKE_DIR=./_golden_outputs \
+.venv/bin/python -m crawl4ai_mcp.smoke_golden
+```
+
 This writes full markdown outputs to `_golden_outputs/` so you can inspect extraction quality page by page.
 
-The golden set now includes the earlier baseline URLs plus `ainew.me`, `openclaw`, `watcha`, `producthunt`, `mydrivers`, `caihongtu`, `openrouter`, and mobile Douban. For sites outside mainland China, proxy-based verification is recommended.
+The golden set now includes the earlier baseline URLs plus `ainew.me`, `openclaw`, `watcha`, `producthunt`, `mydrivers`, `caihongtu`, `openrouter`, mobile Douban, and video pages from YouTube / Bilibili. For sites outside mainland China, proxy-based verification is recommended.
 
 Some overseas sites may still return Cloudflare or similar verification pages even when a proxy is configured. In those cases the server now marks them with `blocked=true`. The recommended path is: better proxy quality, valid cookies, or a persistent browser profile after manual verification.
+
+For some video golden URLs, subtitle extraction may require login. If `yt-dlp` reports login-required subtitles, configure either `CRAWL4AI_MCP_YTDLP_COOKIES_FROM_BROWSER` or `CRAWL4AI_MCP_YTDLP_COOKIEFILE` before running golden smoke.
 
 ---
 

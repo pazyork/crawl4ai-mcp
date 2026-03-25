@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "crawl4agent"
-version = "0.2.3"
+version = "0.3.0"
 description = "An MCP server built on crawl4ai for reliable webpage extraction"
 readme = "README.md"
 requires-python = ">=3.10,<3.14"
@@ -18,6 +18,7 @@ dependencies = [
   "httpx>=0.27.0",
   "beautifulsoup4>=4.12.0",
   "lxml>=5.0.0",
+  "yt-dlp>=2025.4.30",
 ]
 
 [project.optional-dependencies]

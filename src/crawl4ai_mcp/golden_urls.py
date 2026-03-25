@@ -11,4 +11,8 @@ GOLDEN_URLS = [
     "https://www.darioamodei.com/essay/the-adolescence-of-technology",
     "https://www.bestblogs.dev/en/article/c5287c22",
     "https://chatgpt.com/share/69b2282b-5b10-8008-8e11-8f23913457b7",
+    "https://obsidian.md/help/cli",
+    "https://mp.weixin.qq.com/s/k_cpKKIzjFDzjqKO29-5ow",
+    "https://www.bilibili.com/video/BV1CHQDYHEsU",
+    "https://www.youtube.com/watch?v=OFfwN23hR8U",
 ]

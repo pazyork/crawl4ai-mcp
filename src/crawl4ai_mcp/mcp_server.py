@@ -83,6 +83,7 @@ Fetch and extract content from one or more URLs with real browser rendering.
 
 When to use:
 - Scrape webpage content (articles, docs, blogs, ChatGPT shared conversations)
+- Extract subtitles from supported video pages (YouTube, Bilibili)
 - Extract main text while removing navigation/ads
 - Batch fetch multiple pages concurrently
 - Get clean markdown from JS-heavy sites
@@ -97,6 +98,7 @@ Parameters:
 
 Important notes:
 - Some JS-heavy pages (ChatGPT, SPAs) need extra load time — handled automatically
+- Supported video URLs are handled specially and prefer subtitle/transcript extraction
 - Content is truncated at max_chars. If you get incomplete content, increase max_chars
 - If a page times out (default 30s), try again or check if proxy is needed
 - blocked=true means the site returned a verification/CAPTCHA page
