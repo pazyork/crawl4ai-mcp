@@ -359,6 +359,49 @@ LLM-related env vars are **optional**. `use_llm` is still **off by default** at 
 
 ---
 
+## One-shot CLI
+
+This project now exposes a stateless one-shot CLI in addition to the MCP stdio server.
+
+Fetch a single URL once and print JSON:
+
+```bash
+crawl4agent fetch "https://obsidian.md/help/cli" --format markdown
+```
+
+Search the web once and print JSON:
+
+```bash
+crawl4agent search "agent framework" --engine auto --max-results 5
+```
+
+Use proxy and browser cookies for video transcript extraction:
+
+```bash
+crawl4agent fetch "https://www.youtube.com/watch?v=OFfwN23hR8U" \
+  --proxy http://127.0.0.1:7890 \
+  --cookies-from-browser chrome
+```
+
+Run golden smoke once and print a JSON array:
+
+```bash
+crawl4agent smoke --out-dir ./_golden_outputs
+```
+
+The existing `crawl4ai-mcp` command remains the MCP stdio server entrypoint for MCP hosts.
+
+Available help surfaces:
+
+```bash
+crawl4agent --help
+crawl4agent fetch --help
+crawl4agent search --help
+crawl4agent smoke --help
+```
+
+---
+
 ## Golden smoke regression
 
 ```bash

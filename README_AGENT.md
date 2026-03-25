@@ -24,6 +24,37 @@
 | Output (fetch) | `title`, `content`, `links`, `blocked`, `llm_used`, `llm_error` |
 | Output (search) | `engine`, `query`, `results[{title, url, snippet}]`, `total` |
 
+## One-shot CLI
+
+This repo also provides a stateless one-shot CLI: `crawl4agent`.
+
+Examples:
+
+```bash
+# Fetch one URL as JSON
+crawl4agent fetch "https://obsidian.md/help/cli"
+
+# Search the web once as JSON
+crawl4agent search "agent framework" --engine auto --max-results 5
+
+# Run golden smoke once and save outputs
+crawl4agent smoke --out-dir ./_golden_outputs
+
+# Video transcript extraction with explicit auth material
+crawl4agent fetch "https://www.youtube.com/watch?v=OFfwN23hR8U" \
+  --proxy http://127.0.0.1:7890 \
+  --cookies-from-browser chrome
+```
+
+Help surfaces:
+
+```bash
+crawl4agent --help
+crawl4agent fetch --help
+crawl4agent search --help
+crawl4agent smoke --help
+```
+
 ---
 
 ## Installation Steps
@@ -110,7 +141,7 @@ python -m playwright install chromium
 
 ```bash
 # Should show help message
-crawl4ai-mcp --help
+crawl4agent --help
 
 # Run functional tests
 python tests/functional_test.py

@@ -24,6 +24,45 @@
 | 人类开发者 | **[README.zh-CN.md](./README.zh-CN.md)** / **[README.md](./README.md)** |
 | 活在 AI 时代、准备把剩余理智外包给 Agent 的你 | **[README_AGENT.md](./README_AGENT.md)** |
 
+## One-shot CLI
+
+除了 MCP server，现在也支持**无状态单次执行 CLI**：`crawl4agent`。
+
+抓取单个页面并输出 JSON：
+
+```bash
+crawl4agent fetch "https://obsidian.md/help/cli" --format markdown
+```
+
+搜索网页并输出 JSON：
+
+```bash
+crawl4agent search "agent framework" --engine auto --max-results 5
+```
+
+跑金标准 smoke，并把内容落盘：
+
+```bash
+crawl4agent smoke --out-dir ./_golden_outputs
+```
+
+视频字幕提取可显式传登录态：
+
+```bash
+crawl4agent fetch "https://www.youtube.com/watch?v=OFfwN23hR8U" \
+  --proxy http://127.0.0.1:7890 \
+  --cookies-from-browser chrome
+```
+
+可用帮助：
+
+```bash
+crawl4agent --help
+crawl4agent fetch --help
+crawl4agent search --help
+crawl4agent smoke --help
+```
+
 ## 一眼看懂
 
 | 项目项 | 当前仓库里的真实情况 |

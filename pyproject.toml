@@ -29,6 +29,7 @@ dev = [
 ]
 
 [project.scripts]
+crawl4agent = "crawl4ai_mcp.cli:main"
 crawl4ai-mcp = "crawl4ai_mcp.__main__:main"
 
 [tool.pytest.ini_options]
