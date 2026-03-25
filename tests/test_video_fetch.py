@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from pathlib import Path
 import sys
 import types
+from pathlib import Path
 
 import pytest
 
@@ -32,9 +32,9 @@ if "crawl4ai.cache_context" not in sys.modules:
     cache_context_stub.CacheMode = _DummyCacheMode
     sys.modules["crawl4ai.cache_context"] = cache_context_stub
 
+from crawl4ai_mcp import video as video_module
 from crawl4ai_mcp.config import get_settings
 from crawl4ai_mcp.crawler import CrawlService, FetchOptions
-from crawl4ai_mcp import video as video_module
 
 
 class _UnexpectedCrawler:
