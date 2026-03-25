@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-from contextlib import redirect_stdout
 import json
-from collections.abc import Sequence
-from pathlib import Path
 import sys
+from collections.abc import Sequence
+from contextlib import redirect_stdout
+from pathlib import Path
 from typing import Any
 
 from .config import Settings, get_settings
