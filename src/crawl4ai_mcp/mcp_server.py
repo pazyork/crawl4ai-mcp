@@ -14,8 +14,8 @@ from .openai_client import load_openai_config, openai_chat_completions_json
 @asynccontextmanager
 async def _lifespan(_: FastMCP) -> AsyncIterator[dict[str, Any]]:
     settings = get_settings()
-    async with CrawlService(settings) as service:
-        yield {"settings": settings, "service": service}
+    # Delay crawler initialization to avoid stdout pollution during MCP handshake
+    yield {"settings": settings, "service": None}
 
 
 mcp = FastMCP("crawl4ai-mcp", lifespan=_lifespan)
@@ -115,8 +115,15 @@ async def fetch_urls(
     use_llm: bool = False,
     llm_instruction: Optional[str] = None,
 ) -> dict[str, Any]:
-    service = ctx.request_context.lifespan_context["service"]
-    settings = ctx.request_context.lifespan_context["settings"]
+    lifespan_ctx = ctx.request_context.lifespan_context
+    settings = lifespan_ctx["settings"]
+    
+    # Initialize service on first use
+    if lifespan_ctx.get("service") is None:
+        lifespan_ctx["service"] = CrawlService(settings)
+        await lifespan_ctx["service"].__aenter__()
+    
+    service = lifespan_ctx["service"]
     options = FetchOptions(format=format, max_chars=max_chars or settings.max_content_chars)
     results = await fetch_many(service=service, urls=urls, options=options, concurrency=concurrency)
     if use_llm:
@@ -185,7 +192,15 @@ async def search_web(
     lang: str = "",
 ) -> dict[str, Any]:
     try:
-        service = ctx.request_context.lifespan_context["service"]
+        lifespan_ctx = ctx.request_context.lifespan_context
+        settings = lifespan_ctx["settings"]
+        
+        # Initialize service on first use
+        if lifespan_ctx.get("service") is None:
+            lifespan_ctx["service"] = CrawlService(settings)
+            await lifespan_ctx["service"].__aenter__()
+        
+        service = lifespan_ctx["service"]
         return await service.search(
             query=query,
             engine=engine,
@@ -201,4 +216,4 @@ async def search_web(
 
 
 def run_stdio() -> None:
-    mcp.run()
+    mcp.run(transport="stdio")

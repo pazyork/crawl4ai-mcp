@@ -4,8 +4,11 @@ import asyncio
 import json
 import random
 import re
+import sys
+from contextlib import redirect_stdout
 from dataclasses import dataclass
 from html import unescape
+from io import StringIO
 from pathlib import Path
 from typing import Any, Optional, Union
 from urllib.parse import urlparse
