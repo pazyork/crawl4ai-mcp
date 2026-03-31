@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import tempfile
 from typing import Optional
 
 from pydantic import Field
@@ -9,6 +10,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="CRAWL4AI_MCP_", extra="ignore")
 
+    base_directory: str = Field(
+        default_factory=tempfile.gettempdir,
+        description="Writable base directory used by Crawl4AI for cache/log/robots state",
+    )
     headless: bool = Field(default=True)
     user_agent: Optional[str] = Field(default=None)
     proxy: Optional[str] = Field(default=None)

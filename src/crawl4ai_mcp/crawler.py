@@ -399,6 +399,7 @@ class CrawlService:
             "--disable-features=BlockInsecurePrivateNetworkRequests",
         ]
         browser_kwargs["ignore_https_errors"] = True
+        browser_kwargs["verbose"] = False
         browser_cfg = BrowserConfig(**browser_kwargs)
         self._crawler = AsyncWebCrawler(config=browser_cfg)
         await self._crawler.__aenter__()
