@@ -60,6 +60,14 @@ class Settings(BaseSettings):
         description="Enable aggressive Cloudflare bypass mode with longer waits",
     )
 
+    verbose: bool = Field(
+        default=False,
+        description=(
+            "Emit crawl4ai's per-URL FETCH/SCRAPE/COMPLETE progress lines on stderr. "
+            "Off by default — they are noise for MCP hosts and obscure real errors."
+        ),
+    )
+
 
 def get_settings() -> Settings:
     return Settings()

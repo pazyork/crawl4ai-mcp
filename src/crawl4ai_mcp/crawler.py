@@ -4,11 +4,8 @@ import asyncio
 import json
 import random
 import re
-import sys
-from contextlib import redirect_stdout
 from dataclasses import dataclass
 from html import unescape
-from io import StringIO
 from pathlib import Path
 from typing import Any, Optional, Union
 from urllib.parse import urlparse
@@ -232,20 +229,54 @@ def _need_stronger_attempt(url: str, content: str) -> bool:
 
 
 def _looks_like_interstitial(content: str) -> bool:
+    """Detect anti-bot interstitial pages.
+
+    Plain substring matching is unsafe ("Cloudflare" appears in normal page
+    footers, e.g. GitHub). We require the content to be short enough to be a
+    real interstitial AND contain at least one strong, near-unambiguous marker,
+    OR multiple weaker markers co-occurring.
+    """
     s = content.strip()
     if not s:
         return True
-    markers = (
+
+    # Strong markers — these phrases very rarely appear outside an actual
+    # blocking/verification page.
+    strong_markers = (
         "当前环境异常",
         "完成验证后即可继续访问",
+        "执行安全验证",
+        "Verify you are human",
+        "Verifying you are human",
+        "Checking your browser",
+        "Just a moment",
+        "Attention Required! | Cloudflare",
+        "Access Denied",
+        "请输入验证码",
+    )
+    # Weak markers — common substrings that may legitimately appear in normal
+    # pages. Only treat as "blocked" when content is small AND multiple co-occur.
+    weak_markers = (
         "去验证",
         "请开启 JavaScript",
         "Access Denied",
-        "执行安全验证",
         "正在等待",
         "Cloudflare",
+        "captcha",
+        "CAPTCHA",
     )
-    return any(m in s for m in markers)
+
+    # Fast path: any strong marker is enough.
+    if any(m in s for m in strong_markers):
+        return True
+
+    # Slow path: weak markers only count on very small pages (typical
+    # interstitials are < 4KB) and require >=2 distinct hits.
+    if len(s) < 4_000:
+        weak_hits = sum(1 for m in weak_markers if m in s)
+        if weak_hits >= 2:
+            return True
+    return False
 
 
 def _trim_to_first_h1(md: str) -> str:
@@ -455,11 +486,14 @@ class CrawlService:
             overrides.get("delay_before_return_html", self._settings.page_wait_ms / 1000.0)
         )
         cloudflare_wait = bool(overrides.get("cloudflare_wait", False))
-        
-        # Extra delay for Cloudflare-protected sites
+
+        # Extra delay for Cloudflare-protected sites. Only force networkidle
+        # if the site override hasn't already pinned a wait_until — sites like
+        # ProductHunt fire analytics indefinitely so networkidle never fires.
         if cloudflare_wait or self._settings.cloudflare_bypass:
             delay_before_return_html = max(delay_before_return_html, 5.0)
-            wait_until = "networkidle"
+            if "wait_until" not in overrides:
+                wait_until = "networkidle"
 
         mean_delay = max(0.0, float(self._settings.mean_delay_s))
         max_jitter = max(0.0, float(self._settings.max_delay_jitter_s))
@@ -468,6 +502,7 @@ class CrawlService:
 
         fast_cfg = CrawlerRunConfig(
             cache_mode=CacheMode.BYPASS,
+            verbose=self._settings.verbose,
             stream=False,
             wait_until=wait_until,
             wait_for=wait_for_fast,
@@ -495,6 +530,7 @@ class CrawlService:
             msg = last_err or "crawl failed"
             hard_cfg = CrawlerRunConfig(
                 cache_mode=CacheMode.BYPASS,
+                verbose=self._settings.verbose,
                 stream=False,
                 wait_for=wait_for_hard,
                 page_timeout=page_timeout,
@@ -526,6 +562,7 @@ class CrawlService:
         if css_selector_hard:
             extract_cfg = CrawlerRunConfig(
                 cache_mode=CacheMode.BYPASS,
+                verbose=self._settings.verbose,
                 stream=False,
                 wait_until=wait_until,
                 wait_for=wait_for_hard,
@@ -558,6 +595,7 @@ class CrawlService:
         if _need_stronger_attempt(url, content) and getattr(res, "success", False):
             hard_cfg = CrawlerRunConfig(
                 cache_mode=CacheMode.BYPASS,
+                verbose=self._settings.verbose,
                 stream=False,
                 wait_for=wait_for_hard,
                 page_timeout=page_timeout,
