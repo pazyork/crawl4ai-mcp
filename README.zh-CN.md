@@ -82,6 +82,19 @@ crawl4agent smoke --help
 ## 工作流
 
 ```mermaid
+---
+config:
+  theme: base
+  themeVariables:
+    primaryColor: "#FAF9F5"
+    primaryTextColor: "#1A1A1A"
+    primaryBorderColor: "#D97757"
+    lineColor: "#8B5E3C"
+    secondaryColor: "#F5F1E8"
+    tertiaryColor: "#FAF9F5"
+    fontFamily: "ui-sans-serif, system-ui, -apple-system, sans-serif"
+    fontSize: "14px"
+---
 flowchart LR
     A[URL 列表输入] --> B[Playwright 与 Crawl4AI]
     B --> C{快速路径够不够}

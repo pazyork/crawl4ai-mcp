@@ -47,6 +47,19 @@ Two tools: fetch real pages with Playwright + Crawl4AI, or search across 7 engin
 **Fetch flow:**
 
 ```mermaid
+---
+config:
+  theme: base
+  themeVariables:
+    primaryColor: "#FAF9F5"
+    primaryTextColor: "#1A1A1A"
+    primaryBorderColor: "#D97757"
+    lineColor: "#8B5E3C"
+    secondaryColor: "#F5F1E8"
+    tertiaryColor: "#FAF9F5"
+    fontFamily: "ui-sans-serif, system-ui, -apple-system, sans-serif"
+    fontSize: "14px"
+---
 flowchart LR
     A[URL list] --> B[Playwright + Crawl4AI]
     B --> C{Fast path enough?}
@@ -64,6 +77,19 @@ flowchart LR
 **Search flow:**
 
 ```mermaid
+---
+config:
+  theme: base
+  themeVariables:
+    primaryColor: "#FAF9F5"
+    primaryTextColor: "#1A1A1A"
+    primaryBorderColor: "#D97757"
+    lineColor: "#8B5E3C"
+    secondaryColor: "#F5F1E8"
+    tertiaryColor: "#FAF9F5"
+    fontFamily: "ui-sans-serif, system-ui, -apple-system, sans-serif"
+    fontSize: "14px"
+---
 flowchart LR
     A[query + engine] --> B{engine=auto?}
     B -- Yes --> C[Detect language]
