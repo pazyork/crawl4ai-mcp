@@ -77,21 +77,17 @@ def _domain_overrides(url: str) -> dict[str, Any]:
             "page_timeout": 80_000,
             "css_selector_hard": "#content-area",
         }
-    if "producthunt.com" in host:
-        return {
-            "wait_for_fast": "body",
-            "wait_for_hard": "body",
-            "page_timeout": 60_000,
-            "wait_until": "networkidle",
-            "delay_before_return_html": 5.0,
-            "cloudflare_wait": True,
-        }
+    # ProductHunt removed from explicit overrides — it now falls through to
+    # the generic path (wait_until=load + content threshold + hard fallback),
+    # which handles its endless analytics pings without a per-site hack.
     if "github.com" in host:
         return {
             "wait_for_fast": "body",
             "wait_for_hard": "body",
             "page_timeout": 50_000,
         }
+    # ByteDance / Seed removed from explicit overrides — iframe recursion
+    # and the generic content-threshold hard fallback handle these pages.
     return {}
 
 
@@ -183,6 +179,25 @@ def _pick_html(result: Any) -> str:
     return _pick_str(getattr(result, "html", None))
 
 
+def _extract_iframe_srcs(html: str) -> list[str]:
+    """Extract iframe src URLs from raw HTML.
+
+    Used as a generic fallback when the main frame contains almost no
+    visible text — many modern sites (ByteDance Seed, Figma embeds, etc.)
+    render their primary content inside an iframe.
+    """
+    if not html:
+        return []
+    urls: list[str] = []
+    for match in re.finditer(
+        r'<iframe[^>]*src=["\']([^"\']+)["\']', html, re.IGNORECASE
+    ):
+        src = match.group(1).strip()
+        if src and src.startswith("http"):
+            urls.append(src)
+    return urls
+
+
 def _extract_title_from_html(html: str) -> str:
     m = re.search(r"<title[^>]*>(.*?)</title>", html, flags=re.IGNORECASE | re.DOTALL)
     if not m:
@@ -220,12 +235,18 @@ async def _extract_title_via_http(url: str) -> str:
 
 def _need_stronger_attempt(url: str, content: str) -> bool:
     host = urlparse(url).netloc.lower()
-    if not content.strip():
+    stripped = content.strip()
+    if not stripped:
         return True
     hard_hosts = ("medium.com", "code.claude.com", "github.com")
     if any(x in host for x in hard_hosts):
-        return len(content.strip()) < 800
-    return False
+        return len(stripped) < 800
+    # Generic threshold: any page with < 500 chars of extracted text is
+    # suspect — it may be a CSR shell, a lazy-load page, or an anti-bot
+    # interstitial that _looks_like_interstitial missed. Trigger the
+    # stronger fallback (scroll + simulate_user + longer delay) to give
+    # JS hydration / lazy-load a second chance.
+    return len(stripped) < 500
 
 
 def _looks_like_interstitial(content: str) -> bool:
@@ -487,13 +508,12 @@ class CrawlService:
         )
         cloudflare_wait = bool(overrides.get("cloudflare_wait", False))
 
-        # Extra delay for Cloudflare-protected sites. Only force networkidle
-        # if the site override hasn't already pinned a wait_until — sites like
-        # ProductHunt fire analytics indefinitely so networkidle never fires.
+        # Cloudflare-protected sites get a longer post-load delay so JS
+        # challenges have time to resolve, but we NEVER force networkidle
+        # here — analytics-heavy sites (ProductHunt, ByteDance, etc.) fire
+        # tracking pings indefinitely and networkidle never fires.
         if cloudflare_wait or self._settings.cloudflare_bypass:
             delay_before_return_html = max(delay_before_return_html, 5.0)
-            if "wait_until" not in overrides:
-                wait_until = "networkidle"
 
         mean_delay = max(0.0, float(self._settings.mean_delay_s))
         max_jitter = max(0.0, float(self._settings.max_delay_jitter_s))
@@ -593,21 +613,25 @@ class CrawlService:
             content_format = "markdown" if md else "html"
 
         if _need_stronger_attempt(url, content) and getattr(res, "success", False):
+            # Second-chance hard fallback: the first pass returned too little
+            # content (< 500 chars). This is usually a CSR shell or lazy-load
+            # page. We scroll the full page (triggering IntersectionObserver
+            # lazy-loads) and wait longer so JS hydration can finish.
             hard_cfg = CrawlerRunConfig(
                 cache_mode=CacheMode.BYPASS,
                 verbose=self._settings.verbose,
                 stream=False,
                 wait_for=wait_for_hard,
-                page_timeout=page_timeout,
+                page_timeout=max(page_timeout, 60_000),
                 wait_until=wait_until,
                 scan_full_page=True,
-                scroll_delay=max(0.2, self._settings.scroll_step_wait_ms / 1000.0),
+                scroll_delay=max(0.5, self._settings.scroll_step_wait_ms / 1000.0),
                 magic=True,
                 simulate_user=True,
                 override_navigator=True,
                 remove_overlay_elements=True,
                 wait_for_images=wait_for_images,
-                delay_before_return_html=max(0.2, delay_before_return_html),
+                delay_before_return_html=max(5.0, delay_before_return_html),
                 excluded_tags=["nav", "header", "footer", "aside"],
                 word_count_threshold=10,
                 locale=self._settings.locale,
@@ -626,6 +650,32 @@ class CrawlService:
                 else:
                     content = md or html
                     content_format = "markdown" if md else "html"
+
+        # Generic iframe fallback: when the main frame is nearly empty but
+        # contains an iframe, the real content likely lives inside it
+        # (common for ByteDance Seed, Figma embeds, sandboxed widgets, etc.).
+        if len(content) < 500 and html:
+            iframe_urls = _extract_iframe_srcs(html)
+            for iframe_url in iframe_urls[:3]:
+                try:
+                    iframe_res = await self.fetch(
+                        url=iframe_url,
+                        options=FetchOptions(
+                            format=options.format,
+                            max_chars=options.max_chars,
+                        ),
+                    )
+                    iframe_content = str(iframe_res.get("content") or "")
+                    if len(iframe_content) > 100:
+                        if content_format == "html":
+                            html = html + "\n\n<!-- iframe: " + iframe_url + " -->\n\n" + iframe_content
+                            content = html
+                        else:
+                            md = (md or "") + "\n\n---\n\n*Content from embedded frame: " + iframe_url + "*\n\n" + iframe_content
+                            content = md
+                        break  # one useful iframe is enough
+                except Exception:
+                    continue
 
         if not isinstance(title, str) or not title.strip():
             t = _extract_title_from_html(html) if html else ""
